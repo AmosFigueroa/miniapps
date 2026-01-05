@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Toast from './components/Toast';
 import { useContent } from './context/ContentContext';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, PlayCircle, Image as ImageIcon } from 'lucide-react';
 import { sheetApi } from './services/sheetApi';
 
 // Helper to get youtube embed url
@@ -15,16 +15,11 @@ const getEmbedUrl = (url: string) => {
         if (url.includes('embed')) return url;
         
         let videoId = '';
-        // Handle standard watch URL
         if (url.includes('v=')) {
             videoId = url.split('v=')[1]?.split('&')[0];
-        } 
-        // Handle youtu.be short URL
-        else if (url.includes('youtu.be')) {
+        } else if (url.includes('youtu.be')) {
             videoId = url.split('/').pop()?.split('?')[0] || '';
-        }
-        // Handle YouTube Shorts URL
-        else if (url.includes('shorts/')) {
+        } else if (url.includes('shorts/')) {
             videoId = url.split('shorts/')[1]?.split('?')[0] || '';
         }
         
@@ -34,6 +29,29 @@ const getEmbedUrl = (url: string) => {
         return url;
     }
 }
+
+// Helper to convert Drive View links to Direct Download links for <video>/<img> tags
+const getDirectUrl = (url: string) => {
+    if (!url) return '';
+    try {
+        // If it's a Google Drive link
+        if (url.includes('drive.google.com')) {
+            // Check for /file/d/ID pattern
+            const idMatch = url.match(/\/d\/([^/]+)/);
+            if (idMatch && idMatch[1]) {
+                return `https://drive.google.com/uc?export=download&id=${idMatch[1]}`;
+            }
+            // Check for id=ID pattern
+            const idParamMatch = url.match(/id=([^&]+)/);
+            if (idParamMatch && idParamMatch[1]) {
+                return `https://drive.google.com/uc?export=download&id=${idParamMatch[1]}`;
+            }
+        }
+        return url;
+    } catch {
+        return url;
+    }
+};
 
 const App: React.FC = () => {
   const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword, toast, hideToast, showToast } = useContent();
@@ -58,7 +76,6 @@ const App: React.FC = () => {
       const isVideo = file.type.startsWith('video/');
       const isGif = file.type === 'image/gif';
 
-      // Limit size (Google Script limit workaround)
       if (file.size > 10 * 1024 * 1024) {
           showToast("Ukuran file terlalu besar! Maksimal 10MB.", 'warning');
           return;
@@ -69,16 +86,6 @@ const App: React.FC = () => {
       
       try {
           let url = await sheetApi.uploadImage(file, sessionPassword) as string;
-          
-          // CRITICAL FIX: Convert Drive View Link to Direct Link for ALL media types (Video, Image, GIF)
-          // Google Drive 'view' links don't work in <img src> or <video src>
-          if (url.includes('drive.google.com')) {
-             // Match /d/ID or id=ID
-             const driveIdMatch = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
-             if (driveIdMatch && driveIdMatch[1]) {
-                 url = `https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`;
-             }
-          }
           
           // Add #video hash solely for internal identification later
           if (isVideo) {
@@ -95,9 +102,20 @@ const App: React.FC = () => {
       }
   };
 
+  const toggleHeaderFormat = () => {
+      const currentUrl = content.organization.headerImage;
+      if (currentUrl.includes('#video')) {
+          updateOrganization('headerImage', currentUrl.replace('#video', ''));
+          showToast("Format diubah ke GAMBAR", 'info');
+      } else {
+          updateOrganization('headerImage', currentUrl + '#video');
+          showToast("Format diubah ke VIDEO", 'info');
+      }
+  };
+
   const renderHeaderMedia = () => {
-      const url = content.organization.headerImage;
-      if (!url) {
+      const rawUrl = content.organization.headerImage;
+      if (!rawUrl) {
           return (
             <>
                 <div className="text-center opacity-80 z-10">
@@ -115,9 +133,8 @@ const App: React.FC = () => {
       }
 
       // Check for YouTube Link in Header
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-           const embedUrl = getEmbedUrl(url);
-           // Add autoplay and loop parameters for header background feel
+      if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
+           const embedUrl = getEmbedUrl(rawUrl);
            const playlistId = embedUrl.split('/').pop()?.split('?')[0]; 
            const headerVideoSrc = `${embedUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${playlistId}&playsinline=1`;
            
@@ -132,15 +149,16 @@ const App: React.FC = () => {
            );
       }
 
-      // Check if video by Extension or Hash tag
-      const isVideo = url.includes('#video') || url.match(/\.(mp4|webm|mov|ogg)$/i);
-      const cleanUrl = url.split('#')[0]; // Remove hash for source
+      // Detect Video Mode
+      const isVideo = rawUrl.includes('#video') || rawUrl.match(/\.(mp4|webm|mov|ogg)$/i);
+      const cleanUrl = rawUrl.split('#')[0]; 
+      const directUrl = getDirectUrl(cleanUrl); // Convert Drive links to Direct Links
 
       if (isVideo) {
           return (
               <video 
-                key={cleanUrl} // FORCE RELOAD when URL changes
-                src={cleanUrl} 
+                key={directUrl} // FORCE RELOAD when URL changes
+                src={directUrl} 
                 className="w-full h-full object-cover"
                 autoPlay 
                 loop 
@@ -151,7 +169,7 @@ const App: React.FC = () => {
       }
 
       // Render Image or GIF
-      return <img src={cleanUrl} alt="Header" className="w-full h-full object-cover" />;
+      return <img key={directUrl} src={directUrl} alt="Header" className="w-full h-full object-cover" />;
   };
 
   return (
@@ -199,29 +217,43 @@ const App: React.FC = () => {
                          </div>
                      ) : (
                          <>
-                            <label className="cursor-pointer flex flex-col items-center gap-2 text-white hover:text-yellow-300 transition-colors">
-                                <Upload className="w-8 h-8" />
-                                <span className="text-xs font-bold uppercase border-b-2 border-dashed border-white/50 pb-0.5">
-                                    Upload Media (Max 10MB)
-                                </span>
-                                <span className="text-[10px] text-gray-300 font-medium">
-                                    Foto / GIF / Video (MP4)
-                                </span>
+                            <div className="flex gap-4 mb-2">
+                                <label className="cursor-pointer flex flex-col items-center gap-1 text-white hover:text-yellow-300 transition-colors group/btn">
+                                    <div className="p-2 bg-white/10 rounded-full group-hover/btn:bg-white/20 transition-colors">
+                                        <Upload className="w-5 h-5" />
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase">Upload</span>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*,video/mp4,video/webm"
+                                        onChange={handleMediaUpload}
+                                        className="hidden"
+                                    />
+                                </label>
+                                
+                                <button 
+                                    onClick={toggleHeaderFormat}
+                                    className="flex flex-col items-center gap-1 text-white hover:text-yellow-300 transition-colors group/btn"
+                                >
+                                    <div className="p-2 bg-white/10 rounded-full group-hover/btn:bg-white/20 transition-colors">
+                                        {content.organization.headerImage.includes('#video') ? <PlayCircle className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase">
+                                        Format: {content.organization.headerImage.includes('#video') ? 'Video' : 'Gambar'}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <div className="w-full max-w-[220px] px-2">
                                 <input 
-                                    type="file" 
-                                    accept="image/*,video/mp4,video/webm"
-                                    onChange={handleMediaUpload}
-                                    className="hidden"
+                                    type="text" 
+                                    placeholder="Paste Link Google Drive / URL..."
+                                    value={content.organization.headerImage}
+                                    onChange={(e) => updateOrganization('headerImage', e.target.value)}
+                                    className="w-full p-1.5 text-[10px] border border-white/50 bg-black/50 text-white placeholder-gray-400 focus:border-yellow-400 focus:outline-none text-center rounded backdrop-blur-sm"
                                 />
-                            </label>
-                            <span className="text-[10px] text-gray-300">atau</span>
-                            <input 
-                                type="text" 
-                                placeholder="Paste Link URL Media..."
-                                value={content.organization.headerImage}
-                                onChange={(e) => updateOrganization('headerImage', e.target.value)}
-                                className="w-full max-w-[200px] p-1 text-xs border border-white bg-transparent text-white placeholder-gray-400 focus:bg-black focus:outline-none text-center"
-                            />
+                                <p className="text-[9px] text-gray-400 mt-1">*Paste link lalu atur Format di atas</p>
+                            </div>
                          </>
                      )}
                  </div>
