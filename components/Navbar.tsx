@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hexagon, Pencil, Save, LogOut } from 'lucide-react';
+import { Pencil, Save, LogOut } from 'lucide-react';
 import { THEME } from '../constants';
 import { useContent } from '../context/ContentContext';
 
@@ -10,8 +10,12 @@ const Navbar: React.FC = () => {
     <nav className={`sticky top-0 z-40 bg-white border-b-2 border-black px-4 py-3 flex items-center shadow-sm font-sans transition-colors ${isEditing ? 'bg-yellow-50' : ''}`}>
       {/* Logo & Name Container */}
       <div className="flex items-center gap-3 flex-1">
-        <div className="shrink-0 p-1.5 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_#000]" style={{ backgroundColor: THEME.colors.accent }}>
-           <Hexagon className="w-5 h-5 text-black fill-current" />
+        <div className="shrink-0 w-10 h-10 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_#000] overflow-hidden bg-white">
+           <img 
+             src="https://i.ibb.co.com/9H7TtXC5/logo-fakul-baru.webp" 
+             alt="Logo" 
+             className="w-full h-full object-cover"
+           />
         </div>
         <div className="flex flex-col">
             <span className="text-sm sm:text-base font-black tracking-tighter text-slate-900 uppercase leading-tight line-clamp-1">

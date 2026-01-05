@@ -5,7 +5,7 @@ import VirtualHumas from './components/VirtualHumas';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import { useContent } from './context/ContentContext';
-import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Upload, Loader2, PlayCircle, Image as ImageIcon } from 'lucide-react';
 import { sheetApi } from './services/sheetApi';
 
 // Helper to get youtube embed url
@@ -33,31 +33,84 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || !e.target.files[0]) return;
       if (!sessionPassword) {
           alert("Sesi habis, silakan login ulang.");
           return;
       }
 
+      const file = e.target.files[0];
+      const isVideo = file.type.startsWith('video/');
+
+      // Limit size (Google Script limit workaround)
+      // Updated to 10MB as requested
+      if (file.size > 10 * 1024 * 1024) {
+          alert("Ukuran file terlalu besar! Maksimal 10MB agar bisa disimpan di Drive.");
+          return;
+      }
+
       setIsUploading(true);
       try {
-          const file = e.target.files[0];
-          // Limit size to avoid GAS timeout (approx 4MB safe limit)
-          if (file.size > 4 * 1024 * 1024) {
-              alert("Ukuran file terlalu besar! Maksimal 4MB.");
-              setIsUploading(false);
-              return;
+          let url = await sheetApi.uploadImage(file, sessionPassword) as string;
+          
+          // Smart handling for Drive Videos
+          // We convert the "view" link to a "download/stream" link for <video> tags
+          if (isVideo) {
+             const driveIdMatch = url.match(/\/d\/([^/]+)/);
+             if (driveIdMatch && driveIdMatch[1]) {
+                 url = `https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`;
+             }
+             // Add hash to help renderer identify it as video later
+             url += '#video';
           }
-
-          const url = await sheetApi.uploadImage(file, sessionPassword) as string;
+          
           updateOrganization('headerImage', url);
       } catch (error) {
           console.error("Upload failed", error);
-          alert("Gagal upload gambar. Coba lagi.");
+          alert("Gagal upload media. Coba lagi.");
       } finally {
           setIsUploading(false);
       }
+  };
+
+  const renderHeaderMedia = () => {
+      const url = content.organization.headerImage;
+      if (!url) {
+          return (
+            <>
+                <div className="text-center opacity-80 z-10">
+                    <div className="w-16 h-16 mx-auto bg-purple-600 border-2 border-black rounded-lg mb-2 rotate-3 flex items-center justify-center">
+                            <span className="text-white font-bold text-2xl">IMG</span>
+                    </div>
+                    <span className="text-sm font-bold text-slate-700 uppercase tracking-widest">Ilustrasi / Video</span>
+                </div>
+                <div 
+                    className="absolute top-0 left-0 w-full h-full opacity-10" 
+                    style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '10px 10px' }}
+                ></div>
+            </>
+          );
+      }
+
+      // Check if video by Extension or Hash tag
+      const isVideo = url.includes('#video') || url.match(/\.(mp4|webm|mov|ogg)$/i);
+      const cleanUrl = url.split('#')[0]; // Remove hash for source
+
+      if (isVideo) {
+          return (
+              <video 
+                src={cleanUrl} 
+                className="w-full h-full object-cover"
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+              />
+          );
+      }
+
+      return <img src={cleanUrl} alt="Header" className="w-full h-full object-cover" />;
   };
 
   return (
@@ -80,55 +133,44 @@ const App: React.FC = () => {
         
         {/* HEADER SECTION */}
         <div className="text-center space-y-6">
-          {/* Header Image / Illustration Placeholder */}
+          {/* Header Media Container */}
           <div 
             className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black bg-white flex items-center justify-center relative group"
             style={{
                 boxShadow: `6px 6px 0px 0px ${THEME.colors.primary}`
             }}
           >
-             {content.organization.headerImage ? (
-                 <img src={content.organization.headerImage} alt="Header" className="w-full h-full object-cover" />
-             ) : (
-                <>
-                    <div className="text-center opacity-80 z-10">
-                        <div className="w-16 h-16 mx-auto bg-purple-600 border-2 border-black rounded-lg mb-2 rotate-3 flex items-center justify-center">
-                                <span className="text-white font-bold text-2xl">IMG</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-700 uppercase tracking-widest">Ilustrasi Header</span>
-                    </div>
-                    {/* Decorative element */}
-                    <div 
-                        className="absolute top-0 left-0 w-full h-full opacity-10" 
-                        style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '10px 10px' }}
-                    ></div>
-                </>
-             )}
+             {renderHeaderMedia()}
              
-             {/* Edit Image Input Overlay */}
+             {/* Edit Media Overlay */}
              {isEditing && (
-                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 gap-3 animate-in fade-in">
+                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 gap-3 animate-in fade-in z-20">
                      {isUploading ? (
                          <div className="text-white flex flex-col items-center">
                              <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                             <span className="text-xs font-bold uppercase">Mengupload ke Drive...</span>
+                             <span className="text-xs font-bold uppercase">Mengupload Media...</span>
                          </div>
                      ) : (
                          <>
                             <label className="cursor-pointer flex flex-col items-center gap-2 text-white hover:text-yellow-300 transition-colors">
                                 <Upload className="w-8 h-8" />
-                                <span className="text-xs font-bold uppercase border-b-2 border-dashed border-white/50 pb-0.5">Ganti Gambar (Max 4MB)</span>
+                                <span className="text-xs font-bold uppercase border-b-2 border-dashed border-white/50 pb-0.5">
+                                    Upload Media (Max 10MB)
+                                </span>
+                                <span className="text-[10px] text-gray-300 font-medium">
+                                    Foto / GIF / Video (MP4)
+                                </span>
                                 <input 
                                     type="file" 
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
+                                    accept="image/*,video/mp4,video/webm"
+                                    onChange={handleMediaUpload}
                                     className="hidden"
                                 />
                             </label>
                             <span className="text-[10px] text-gray-300">atau</span>
                             <input 
                                 type="text" 
-                                placeholder="Paste Link URL Gambar..."
+                                placeholder="Paste Link URL Media..."
                                 value={content.organization.headerImage}
                                 onChange={(e) => updateOrganization('headerImage', e.target.value)}
                                 className="w-full max-w-[200px] p-1 text-xs border border-white bg-transparent text-white placeholder-gray-400 focus:bg-black focus:outline-none text-center"
