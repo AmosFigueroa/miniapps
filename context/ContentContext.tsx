@@ -56,19 +56,22 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const data = await sheetApi.fetchData();
       
-      // FIX: Check if data exists AND has the correct structure (organization key)
-      // This prevents the app from crashing if the Google Sheet returns an empty object "{}"
+      // Check if data exists AND has the correct structure (organization key)
       if (data && typeof data === 'object' && 'organization' in data) {
         setContent((prev) => ({
              ...prev,
              ...data,
-             // Safe merge for nested objects
              organization: { ...prev.organization, ...data.organization },
              podcast: { ...prev.podcast, ...data.podcast },
              links: Array.isArray(data.links) ? data.links : prev.links
         }));
       } else {
-        // Fallback: If API data is empty (first run), try local storage or keep default
+        // Fallback: If API data is empty (Sheet baru dibuat otomatis oleh GAS),
+        // Kita gunakan DEFAULT_CONTENT lokal.
+        // OPTIONAL: Auto-seed (Simpan default ke server jika kita punya password default, 
+        // tapi karena kita butuh password, kita biarkan user save manual nanti atau pakai local storage)
+        console.log("Database kosong atau baru. Menggunakan template default.");
+        
         const saved = localStorage.getItem('site_content');
         if (saved) {
             try {

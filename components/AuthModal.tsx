@@ -25,7 +25,14 @@ const AuthModal: React.FC = () => {
       window.history.replaceState({}, '', url);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Password Salah atau Gagal Koneksi ke Google Script.");
+      let msg = err.message || "Password Salah atau Gagal Koneksi ke Google Script.";
+      
+      // Handle technical server errors nicely
+      if (msg.includes("TypeError") || msg.includes("null") || msg.includes("script")) {
+          msg = "Sedang menyiapkan Database baru di Google Drive... Silakan coba 10 detik lagi.";
+      }
+      
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -48,14 +55,14 @@ const AuthModal: React.FC = () => {
             <Lock size={24} />
           </div>
           <h2 className="text-xl font-black uppercase text-center">Akses Admin</h2>
-          <p className="text-xs text-center text-gray-500">Masukkan Password Admin yang ada di Google Sheet (Config!B1)</p>
+          <p className="text-xs text-center text-gray-500">Masukkan Password Admin (Default: admin)</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="p-3 bg-red-50 border-2 border-red-500 text-red-700 text-xs font-bold rounded-lg flex items-center gap-2">
-               <AlertCircle size={16} />
-               {error}
+               <AlertCircle size={24} className="shrink-0" />
+               <span>{error}</span>
             </div>
           )}
 
