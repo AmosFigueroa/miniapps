@@ -3,19 +3,19 @@ import { ContentData, SocialLink, ToastData, ToastType } from '../types';
 import { ORGANIZATION_INFO, SOCIAL_LINKS } from '../constants';
 import { sheetApi } from '../services/sheetApi';
 
-// Initial Default Data
+// Initial Default Data - Empty to ensure no dummy data is shown
 const DEFAULT_CONTENT: ContentData = {
   organization: {
-    name: ORGANIZATION_INFO.name,
-    tagline: ORGANIZATION_INFO.tagline,
-    description: ORGANIZATION_INFO.description,
+    name: "",
+    tagline: "",
+    description: "",
     headerImage: '',
   },
   podcast: {
-    title: "Podcast Terbaru",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    title: "",
+    videoUrl: "",
   },
-  links: SOCIAL_LINKS
+  links: []
 };
 
 interface ContentContextType {
@@ -81,7 +81,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
              links: Array.isArray(data.links) ? data.links : prev.links
         }));
       } else {
-        console.log("Database kosong atau baru. Menggunakan template default.");
+        console.log("Database kosong atau baru. Mengecek local storage...");
         const saved = localStorage.getItem('site_content');
         if (saved) {
             try {

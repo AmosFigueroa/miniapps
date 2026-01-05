@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { THEME } from './constants';
 import LinkTree from './components/LinkTree';
-import VirtualHumas from './components/VirtualHumas';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Toast from './components/Toast';
@@ -12,10 +11,17 @@ import { sheetApi } from './services/sheetApi';
 // Helper to get youtube embed url
 const getEmbedUrl = (url: string) => {
     try {
+        if (!url) return '';
         if (url.includes('embed')) return url;
-        const v = url.split('v=')[1]?.split('&')[0];
-        if (v) return `https://www.youtube.com/embed/${v}`;
-        if (url.includes('youtu.be')) return `https://www.youtube.com/embed/${url.split('/').pop()}`;
+        
+        let videoId = '';
+        if (url.includes('v=')) {
+            videoId = url.split('v=')[1]?.split('&')[0];
+        } else if (url.includes('youtu.be')) {
+            videoId = url.split('/').pop() || '';
+        }
+        
+        if (videoId) return `https://www.youtube.com/embed/${videoId}`;
         return url;
     } catch {
         return url;
@@ -43,33 +49,37 @@ const App: React.FC = () => {
 
       const file = e.target.files[0];
       const isVideo = file.type.startsWith('video/');
+      const isGif = file.type === 'image/gif';
 
       // Limit size (Google Script limit workaround)
-      // Updated to 10MB as requested
       if (file.size > 10 * 1024 * 1024) {
           showToast("Ukuran file terlalu besar! Maksimal 10MB.", 'warning');
           return;
       }
 
       setIsUploading(true);
-      showToast("Sedang mengupload media...", 'info');
+      showToast(isVideo ? "Mengupload video..." : "Mengupload gambar...", 'info');
       
       try {
           let url = await sheetApi.uploadImage(file, sessionPassword) as string;
           
-          // Smart handling for Drive Videos
-          // We convert the "view" link to a "download/stream" link for <video> tags
-          if (isVideo) {
-             const driveIdMatch = url.match(/\/d\/([^/]+)/);
+          // CRITICAL FIX: Convert Drive View Link to Direct Link for ALL media types (Video, Image, GIF)
+          // Google Drive 'view' links don't work in <img src> or <video src>
+          if (url.includes('drive.google.com')) {
+             // Match /d/ID or id=ID
+             const driveIdMatch = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
              if (driveIdMatch && driveIdMatch[1]) {
                  url = `https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`;
              }
-             // Add hash to help renderer identify it as video later
+          }
+          
+          // Add #video hash solely for internal identification later
+          if (isVideo) {
              url += '#video';
           }
           
           updateOrganization('headerImage', url);
-          showToast("Media berhasil diupload!", 'success');
+          showToast("Media berhasil diupload & diproses!", 'success');
       } catch (error) {
           console.error("Upload failed", error);
           showToast("Gagal upload media. Coba lagi.", 'error');
@@ -97,6 +107,24 @@ const App: React.FC = () => {
           );
       }
 
+      // Check for YouTube Link in Header
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+           const embedUrl = getEmbedUrl(url);
+           // Add autoplay and loop parameters for header background feel
+           const playlistId = embedUrl.split('/').pop(); 
+           const headerVideoSrc = `${embedUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${playlistId}&playsinline=1`;
+           
+           return (
+              <iframe 
+                src={headerVideoSrc}
+                title="Header Video"
+                className="w-full h-full object-cover pointer-events-none"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                frameBorder="0"
+              />
+           );
+      }
+
       // Check if video by Extension or Hash tag
       const isVideo = url.includes('#video') || url.match(/\.(mp4|webm|mov|ogg)$/i);
       const cleanUrl = url.split('#')[0]; // Remove hash for source
@@ -104,6 +132,7 @@ const App: React.FC = () => {
       if (isVideo) {
           return (
               <video 
+                key={cleanUrl} // FORCE RELOAD when URL changes
                 src={cleanUrl} 
                 className="w-full h-full object-cover"
                 autoPlay 
@@ -114,6 +143,7 @@ const App: React.FC = () => {
           );
       }
 
+      // Render Image or GIF
       return <img src={cleanUrl} alt="Header" className="w-full h-full object-cover" />;
   };
 
@@ -145,7 +175,7 @@ const App: React.FC = () => {
         <div className="text-center space-y-6">
           {/* Header Media Container */}
           <div 
-            className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black bg-white flex items-center justify-center relative group"
+            className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black bg-black flex items-center justify-center relative group"
             style={{
                 boxShadow: `6px 6px 0px 0px ${THEME.colors.primary}`
             }}
@@ -284,11 +314,11 @@ const App: React.FC = () => {
              {/* Dynamic hover style via inline style wasn't applying cleanly to tailwind classes, using standard hover class with style override strategy or clean class */}
              <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: THEME.colors.accent }}></div>
 
-            {/* YouTube Embed */}
+            {/* YouTube Embed - Added autoplay=1&mute=1 */}
             <iframe 
               width="100%" 
               height="100%" 
-              src={getEmbedUrl(content.podcast.videoUrl)}
+              src={`${getEmbedUrl(content.podcast.videoUrl)}?autoplay=1&mute=1&playsinline=1`}
               title="YouTube video player" 
               frameBorder="0" 
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
@@ -304,9 +334,6 @@ const App: React.FC = () => {
       <footer className="py-8 text-center text-sm font-bold text-slate-500 border-t-2 border-black bg-white">
          &copy; {new Date().getFullYear()} {content.organization.name}
       </footer>
-
-      {/* AI HUMAS OVERLAY */}
-      <VirtualHumas />
     </div>
   );
 };
