@@ -7,9 +7,9 @@ const Navbar: React.FC = () => {
   const { content, isEditing, toggleEditMode, sessionPassword, logout, saveChanges, isLoadingData } = useContent();
 
   return (
-    <nav className={`sticky top-0 z-40 bg-white border-b-2 border-black px-4 py-3 flex items-center shadow-sm font-sans transition-colors ${isEditing ? 'bg-yellow-50' : ''}`}>
+    <nav className={`sticky top-0 z-40 bg-white border-b-2 border-black px-4 py-3 flex items-center justify-center shadow-sm font-sans transition-colors relative min-h-[64px] ${isEditing ? 'bg-yellow-50' : ''}`}>
       {/* Logo & Name Container */}
-      <div className="flex items-center gap-3 flex-1">
+      <div className="flex items-center gap-3">
         <div className="shrink-0 w-10 h-10 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_#000] overflow-hidden bg-white">
            <img 
              src="https://i.ibb.co.com/9H7TtXC5/logo-fakul-baru.webp" 
@@ -25,9 +25,9 @@ const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Controls - ONLY VISIBLE IF LOGGED IN */}
+      {/* Controls - ONLY VISIBLE IF LOGGED IN - Positioned Absolutely */}
       {sessionPassword && (
-          <div className="flex gap-2 items-center animate-in fade-in duration-300">
+          <div className="absolute right-4 flex gap-2 items-center animate-in fade-in duration-300">
             {/* Save Button (Only visible when editing) */}
             {isEditing && (
                 <button 
