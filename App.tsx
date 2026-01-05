@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { THEME } from './constants';
 import LinkTree from './components/LinkTree';
 import VirtualHumas from './components/VirtualHumas';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import { useContent } from './context/ContentContext';
+import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { sheetApi } from './services/sheetApi';
 
 // Helper to get youtube embed url
 const getEmbedUrl = (url: string) => {
@@ -20,7 +22,43 @@ const getEmbedUrl = (url: string) => {
 }
 
 const App: React.FC = () => {
-  const { content, isEditing, updateOrganization, updatePodcast } = useContent();
+  const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword } = useContent();
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Trigger login if URL contains ?mode=admin
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'admin') {
+        openAuthModal();
+    }
+  }, []);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || !e.target.files[0]) return;
+      if (!sessionPassword) {
+          alert("Sesi habis, silakan login ulang.");
+          return;
+      }
+
+      setIsUploading(true);
+      try {
+          const file = e.target.files[0];
+          // Limit size to avoid GAS timeout (approx 4MB safe limit)
+          if (file.size > 4 * 1024 * 1024) {
+              alert("Ukuran file terlalu besar! Maksimal 4MB.");
+              setIsUploading(false);
+              return;
+          }
+
+          const url = await sheetApi.uploadImage(file, sessionPassword) as string;
+          updateOrganization('headerImage', url);
+      } catch (error) {
+          console.error("Upload failed", error);
+          alert("Gagal upload gambar. Coba lagi.");
+      } finally {
+          setIsUploading(false);
+      }
+  };
 
   return (
     <div 
@@ -69,14 +107,34 @@ const App: React.FC = () => {
              
              {/* Edit Image Input Overlay */}
              {isEditing && (
-                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4">
-                     <input 
-                        type="text" 
-                        placeholder="Paste Image URL here..."
-                        value={content.organization.headerImage}
-                        onChange={(e) => updateOrganization('headerImage', e.target.value)}
-                        className="w-full p-2 text-sm border-2 border-white bg-transparent text-white placeholder-gray-300 focus:bg-black focus:outline-none"
-                     />
+                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 gap-3 animate-in fade-in">
+                     {isUploading ? (
+                         <div className="text-white flex flex-col items-center">
+                             <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                             <span className="text-xs font-bold uppercase">Mengupload ke Drive...</span>
+                         </div>
+                     ) : (
+                         <>
+                            <label className="cursor-pointer flex flex-col items-center gap-2 text-white hover:text-yellow-300 transition-colors">
+                                <Upload className="w-8 h-8" />
+                                <span className="text-xs font-bold uppercase border-b-2 border-dashed border-white/50 pb-0.5">Ganti Gambar (Max 4MB)</span>
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                />
+                            </label>
+                            <span className="text-[10px] text-gray-300">atau</span>
+                            <input 
+                                type="text" 
+                                placeholder="Paste Link URL Gambar..."
+                                value={content.organization.headerImage}
+                                onChange={(e) => updateOrganization('headerImage', e.target.value)}
+                                className="w-full max-w-[200px] p-1 text-xs border border-white bg-transparent text-white placeholder-gray-400 focus:bg-black focus:outline-none text-center"
+                            />
+                         </>
+                     )}
                  </div>
              )}
           </div>

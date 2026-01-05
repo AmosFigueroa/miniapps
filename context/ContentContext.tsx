@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ContentData, SocialLink } from '../types';
 import { ORGANIZATION_INFO, SOCIAL_LINKS } from '../constants';
-import { account, databases, APPWRITE_CONFIG } from '../lib/appwrite';
-import { ID } from 'appwrite';
+import { sheetApi } from '../services/sheetApi';
 
 // Initial Default Data
 const DEFAULT_CONTENT: ContentData = {
@@ -22,20 +21,20 @@ const DEFAULT_CONTENT: ContentData = {
 interface ContentContextType {
   content: ContentData;
   isEditing: boolean;
-  currentUser: any;
   isAuthModalOpen: boolean;
   isLoadingData: boolean;
   toggleEditMode: () => void;
   openAuthModal: () => void;
   closeAuthModal: () => void;
-  login: (email: string, pass: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (password: string) => Promise<void>;
+  logout: () => void;
   updateOrganization: (key: keyof ContentData['organization'], value: string) => void;
   updatePodcast: (key: keyof ContentData['podcast'], value: string) => void;
   addLink: (category: 'contact' | 'social') => void;
   removeLink: (id: string) => void;
   updateLink: (id: string, field: keyof SocialLink, value: string) => void;
   saveChanges: () => Promise<void>;
+  sessionPassword: string | null;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -43,127 +42,115 @@ const ContentContext = createContext<ContentContextType | undefined>(undefined);
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [content, setContent] = useState<ContentData>(DEFAULT_CONTENT);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [sessionPassword, setSessionPassword] = useState<string | null>(null);
 
-  // 1. Check Session & Load Data on Mount
+  // Load Data on Mount
   useEffect(() => {
-    checkSession();
     fetchContent();
   }, []);
-
-  const checkSession = async () => {
-    try {
-      const user = await account.get();
-      setCurrentUser(user);
-    } catch {
-      setCurrentUser(null);
-    }
-  };
 
   const fetchContent = async () => {
     setIsLoadingData(true);
     try {
-      // Try to get the specific document
-      const response = await databases.getDocument(
-        APPWRITE_CONFIG.DATABASE_ID,
-        APPWRITE_CONFIG.COLLECTION_ID,
-        APPWRITE_CONFIG.DOCUMENT_ID
-      );
-
-      // CHANGED: key updated to data_json
-      if (response && response.data_json) {
-        setContent(JSON.parse(response.data_json));
+      const data = await sheetApi.fetchData();
+      
+      // FIX: Check if data exists AND has the correct structure (organization key)
+      // This prevents the app from crashing if the Google Sheet returns an empty object "{}"
+      if (data && typeof data === 'object' && 'organization' in data) {
+        setContent((prev) => ({
+             ...prev,
+             ...data,
+             // Safe merge for nested objects
+             organization: { ...prev.organization, ...data.organization },
+             podcast: { ...prev.podcast, ...data.podcast },
+             links: Array.isArray(data.links) ? data.links : prev.links
+        }));
+      } else {
+        // Fallback: If API data is empty (first run), try local storage or keep default
+        const saved = localStorage.getItem('site_content');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.organization) {
+                    setContent(parsed);
+                }
+            } catch (e) {
+                console.error("Local storage corrupted", e);
+            }
+        }
       }
     } catch (error) {
-      console.log("Using default content or failed to fetch Appwrite:", error);
-      // Fallback to localStorage if Appwrite fails (e.g. not configured yet)
+      console.log("Failed to fetch from Google Sheet, using local/default.", error);
       const saved = localStorage.getItem('site_content');
-      if (saved) setContent(JSON.parse(saved));
+      if (saved) {
+         try {
+             const parsed = JSON.parse(saved);
+             if (parsed && parsed.organization) {
+                 setContent(parsed);
+             }
+         } catch (e) {}
+      }
     } finally {
       setIsLoadingData(false);
     }
   };
 
-  // 2. Saving Logic (Push to Appwrite)
   const saveChanges = async () => {
-    if (!currentUser) return; // Only allow save if logged in
+    if (!sessionPassword) {
+        alert("Sesi habis. Silakan login ulang.");
+        openAuthModal();
+        return;
+    }
     
     try {
-      const jsonString = JSON.stringify(content);
+      const response = await sheetApi.saveData(content, sessionPassword);
       
-      // Try to update existing document
-      await databases.updateDocument(
-        APPWRITE_CONFIG.DATABASE_ID,
-        APPWRITE_CONFIG.COLLECTION_ID,
-        APPWRITE_CONFIG.DOCUMENT_ID,
-        { data_json: jsonString }
-      );
-      
-      // Also save to local storage as backup/cache
-      localStorage.setItem('site_content', jsonString);
-      alert("Perubahan tersimpan ke Server!");
+      if (response.success) {
+          // Backup local
+          localStorage.setItem('site_content', JSON.stringify(content));
+          alert("✅ Sukses! Data tersimpan di Google Sheet.");
+      } else {
+          alert("❌ Gagal menyimpan: " + response.message);
+      }
     } catch (error: any) {
       console.error("Save failed", error);
-      
-      // Check for Fetch Error specifically
-      if (error.message === "Failed to fetch") {
-         alert("GAGAL MENYIMPAN: Koneksi ke server ditolak. Pastikan domain terdaftar di Appwrite Console > Platforms.");
-         return;
-      }
-
-      // If document not found, try to create it (First time setup)
-      if (error.code === 404) {
-         try {
-            await databases.createDocument(
-                APPWRITE_CONFIG.DATABASE_ID,
-                APPWRITE_CONFIG.COLLECTION_ID,
-                APPWRITE_CONFIG.DOCUMENT_ID,
-                { data_json: JSON.stringify(content) }
-            );
-            alert("Database diinisialisasi dan tersimpan!");
-         } catch (createErr: any) {
-             if (createErr.message === "Failed to fetch") {
-                 alert("GAGAL MENYIMPAN: Koneksi ke server ditolak. Cek Appwrite Platforms.");
-             } else {
-                 alert("Gagal menyimpan. Pastikan Project ID, DB ID, dan Collection ID benar.");
-             }
-         }
-      } else {
-        alert("Gagal menyimpan perubahan. Error: " + error.message);
-      }
+      alert("❌ Error Koneksi. Pastikan URL Script benar.");
     }
   };
 
-  // 3. Auth Actions
-  const login = async (email: string, pass: string) => {
+  const login = async (pass: string) => {
     try {
-      await account.createEmailPasswordSession(email, pass);
-      await checkSession();
-      setIsEditing(true); // Auto enable edit mode on login
+      const res = await sheetApi.login(pass);
+      if (res.success) {
+          setSessionPassword(pass);
+          setIsEditing(true);
+      } else {
+          throw new Error(res.message || "Password salah");
+      }
     } catch (error) {
       throw error;
     }
   };
 
-  const logout = async () => {
-    await account.deleteSession('current');
-    setCurrentUser(null);
+  const logout = () => {
+    setSessionPassword(null);
     setIsEditing(false);
   };
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
+  
   const toggleEditMode = () => {
-      if (!currentUser) {
+      if (!sessionPassword) {
           openAuthModal();
       } else {
           setIsEditing(prev => !prev);
       }
   };
 
-  // 4. Content Modifiers
+  // Content Modifiers
   const updateOrganization = (key: keyof ContentData['organization'], value: string) => {
     setContent(prev => ({
       ...prev,
@@ -205,9 +192,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <ContentContext.Provider value={{ 
       content, 
       isEditing, 
-      currentUser,
       isAuthModalOpen,
       isLoadingData,
+      sessionPassword,
       toggleEditMode, 
       openAuthModal,
       closeAuthModal,
