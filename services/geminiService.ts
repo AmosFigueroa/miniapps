@@ -1,10 +1,33 @@
 import { GoogleGenAI } from "@google/genai";
 import { ORGANIZATION_INFO } from '../constants';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = () => {
+  if (!aiClient) {
+    // Safely access process.env to prevent immediate crashes during module loading
+    // if the environment variable isn't ready yet.
+    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+    
+    if (!apiKey) {
+      console.warn("API_KEY is missing. AI features will not work.");
+      // We don't throw here to avoid crashing the whole app, 
+      // instead we let the API call fail gracefully later.
+      return null;
+    }
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+};
 
 export const generateHumasResponse = async (userMessage: string): Promise<string> => {
   try {
+    const ai = getAiClient();
+    
+    if (!ai) {
+        return "Maaf, konfigurasi API Key belum tersedia. Hubungi admin.";
+    }
+
     const model = 'gemini-3-flash-preview';
     
     const response = await ai.models.generateContent({

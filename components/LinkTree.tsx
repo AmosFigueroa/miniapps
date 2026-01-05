@@ -1,7 +1,7 @@
 import React from 'react';
 import { THEME } from '../constants';
 import { useContent } from '../context/ContentContext';
-import { Trash2, Plus, Phone, Instagram, Youtube, Music, Globe, Twitter, Mail } from 'lucide-react';
+import { Trash2, Plus, Phone, Instagram, Youtube, Music, Globe, Mail } from 'lucide-react';
 
 // Icon mapping helper
 const getIcon = (iconName?: string) => {
@@ -9,7 +9,6 @@ const getIcon = (iconName?: string) => {
         case 'Instagram': return Instagram;
         case 'Youtube': return Youtube;
         case 'Music': return Music;
-        case 'Twitter': return Twitter;
         case 'Globe': return Globe;
         case 'Mail': return Mail;
         default: return Phone;
@@ -100,7 +99,6 @@ const LinkTree: React.FC = () => {
                         <option value="Instagram">IG</option>
                         <option value="Youtube">YT</option>
                         <option value="Music">TikTok</option>
-                        <option value="Twitter">X</option>
                         <option value="Globe">Web</option>
                         <option value="Mail">Mail</option>
                     </select>
