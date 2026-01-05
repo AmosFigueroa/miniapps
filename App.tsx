@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Toast from './components/Toast';
 import { useContent } from './context/ContentContext';
-import { Upload, Loader2, PlayCircle, Image as ImageIcon } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import { sheetApi } from './services/sheetApi';
 
 // Helper to get youtube embed url
@@ -15,10 +15,17 @@ const getEmbedUrl = (url: string) => {
         if (url.includes('embed')) return url;
         
         let videoId = '';
+        // Handle standard watch URL
         if (url.includes('v=')) {
             videoId = url.split('v=')[1]?.split('&')[0];
-        } else if (url.includes('youtu.be')) {
-            videoId = url.split('/').pop() || '';
+        } 
+        // Handle youtu.be short URL
+        else if (url.includes('youtu.be')) {
+            videoId = url.split('/').pop()?.split('?')[0] || '';
+        }
+        // Handle YouTube Shorts URL
+        else if (url.includes('shorts/')) {
+            videoId = url.split('shorts/')[1]?.split('?')[0] || '';
         }
         
         if (videoId) return `https://www.youtube.com/embed/${videoId}`;
@@ -111,7 +118,7 @@ const App: React.FC = () => {
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
            const embedUrl = getEmbedUrl(url);
            // Add autoplay and loop parameters for header background feel
-           const playlistId = embedUrl.split('/').pop(); 
+           const playlistId = embedUrl.split('/').pop()?.split('?')[0]; 
            const headerVideoSrc = `${embedUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${playlistId}&playsinline=1`;
            
            return (
@@ -314,11 +321,12 @@ const App: React.FC = () => {
              {/* Dynamic hover style via inline style wasn't applying cleanly to tailwind classes, using standard hover class with style override strategy or clean class */}
              <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: THEME.colors.accent }}></div>
 
-            {/* YouTube Embed - Added autoplay=1&mute=1 */}
+            {/* YouTube Embed - KEY ADDED FOR RELOAD */}
             <iframe 
+              key={content.podcast.videoUrl}
               width="100%" 
               height="100%" 
-              src={`${getEmbedUrl(content.podcast.videoUrl)}?autoplay=1&mute=1&playsinline=1`}
+              src={`${getEmbedUrl(content.podcast.videoUrl)}?autoplay=1&mute=1&controls=1&rel=0&playsinline=1`}
               title="YouTube video player" 
               frameBorder="0" 
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
