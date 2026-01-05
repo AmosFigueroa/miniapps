@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hexagon, Edit, Save, LogOut, Loader, UserCircle } from 'lucide-react';
+import { Hexagon, Pencil, Save, LogOut, Loader, UserCircle } from 'lucide-react';
 import { THEME } from '../constants';
 import { useContent } from '../context/ContentContext';
 
@@ -47,7 +47,7 @@ const Navbar: React.FC = () => {
                     className={`p-2 rounded-lg border-2 border-black transition-all active:translate-y-0.5 ${isEditing ? 'bg-green-400 shadow-[2px_2px_0px_0px_#000]' : 'bg-gray-100 hover:bg-gray-200'}`}
                     title={isEditing ? "Selesai Edit" : "Mulai Edit"}
                 >
-                    <Edit className="w-5 h-5" />
+                    <Pencil className="w-5 h-5" />
                 </button>
 
                 {/* Logout */}

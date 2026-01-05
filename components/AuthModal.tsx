@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, LogIn, Loader2, AlertCircle, HelpCircle } from 'lucide-react';
+import { X, LogIn, Loader2, AlertCircle, CircleHelp } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
 
 const AuthModal: React.FC = () => {
@@ -131,7 +131,7 @@ const AuthModal: React.FC = () => {
                 onClick={() => setShowTroubleshoot(!showTroubleshoot)}
                 className="text-[10px] text-gray-400 font-medium hover:text-black flex items-center justify-center gap-1 w-full"
             >
-                <HelpCircle size={12} />
+                <CircleHelp size={12} />
                 {showTroubleshoot ? "Sembunyikan Bantuan" : "Bantuan Koneksi"}
             </button>
         </div>
