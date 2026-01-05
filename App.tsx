@@ -12,7 +12,10 @@ import { sheetApi } from './services/sheetApi';
 const getEmbedUrl = (url: string) => {
     try {
         if (!url) return '';
-        if (url.includes('embed')) return url;
+        if (url.includes('embed')) {
+            // Ensure we strip existing query params to avoid double ?
+            return url.split('?')[0];
+        }
         
         let videoId = '';
         if (url.includes('v=')) {
@@ -135,16 +138,25 @@ const App: React.FC = () => {
       // Check for YouTube Link in Header
       if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
            const embedUrl = getEmbedUrl(rawUrl);
-           const playlistId = embedUrl.split('/').pop()?.split('?')[0]; 
-           const headerVideoSrc = `${embedUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${playlistId}&playsinline=1`;
+           // Robustly extract ID for playlist param (essential for looping single video)
+           const videoId = embedUrl.split('embed/')[1]?.split('?')[0]; 
+           
+           // Updated Params:
+           // autoplay=1&mute=1 : Forced Autoplay (Muted)
+           // controls=0 : Hides player controls for "Background" look
+           // loop=1&playlist=[ID] : Loops the single video
+           // playsinline=1 : Essential for iOS
+           const headerVideoSrc = `${embedUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0`;
            
            return (
               <iframe 
+                key={headerVideoSrc} // Force reload when URL changes
                 src={headerVideoSrc}
                 title="Header Video"
-                className="w-full h-full object-cover pointer-events-none"
+                className="w-full h-full object-cover"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 frameBorder="0"
+                style={{ pointerEvents: 'none' }} // Re-added pointer-events-none for true background feel, assuming mute=1 works
               />
            );
       }
@@ -163,7 +175,12 @@ const App: React.FC = () => {
                 autoPlay 
                 loop 
                 muted 
-                playsInline 
+                playsInline
+                crossOrigin="anonymous"
+                onError={(e) => {
+                    console.error("Video load error", e);
+                    // Fallback visual could go here, but for now we keep it simple
+                }}
               />
           );
       }
@@ -247,12 +264,12 @@ const App: React.FC = () => {
                             <div className="w-full max-w-[220px] px-2">
                                 <input 
                                     type="text" 
-                                    placeholder="Paste Link Google Drive / URL..."
+                                    placeholder="Paste YouTube / Drive Link..."
                                     value={content.organization.headerImage}
                                     onChange={(e) => updateOrganization('headerImage', e.target.value)}
                                     className="w-full p-1.5 text-[10px] border border-white/50 bg-black/50 text-white placeholder-gray-400 focus:border-yellow-400 focus:outline-none text-center rounded backdrop-blur-sm"
                                 />
-                                <p className="text-[9px] text-gray-400 mt-1">*Paste link lalu atur Format di atas</p>
+                                <p className="text-[9px] text-gray-400 mt-1">*YouTube Link Direkomendasikan untuk Video Header</p>
                             </div>
                          </>
                      )}

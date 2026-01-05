@@ -17,11 +17,10 @@ const Navbar: React.FC = () => {
              className="w-full h-full object-cover"
            />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col justify-center min-h-[40px]">
             <span className="text-sm sm:text-base font-black tracking-tighter text-slate-900 uppercase leading-tight line-clamp-1">
-                {content.organization.name}
+                {content.organization.name || (isLoadingData ? "..." : "")}
             </span>
-            {isLoadingData && <span className="text-[10px] text-gray-400">Syncing G-Sheet...</span>}
         </div>
       </div>
 
