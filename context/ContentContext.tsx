@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ContentData, SocialLink } from '../types';
+import { ContentData, SocialLink, ToastData, ToastType } from '../types';
 import { ORGANIZATION_INFO, SOCIAL_LINKS } from '../constants';
 import { sheetApi } from '../services/sheetApi';
 
@@ -35,6 +35,10 @@ interface ContentContextType {
   updateLink: (id: string, field: keyof SocialLink, value: string) => void;
   saveChanges: () => Promise<void>;
   sessionPassword: string | null;
+  // Toast Props
+  toast: ToastData;
+  showToast: (message: string, type: ToastType) => void;
+  hideToast: () => void;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -45,6 +49,17 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [sessionPassword, setSessionPassword] = useState<string | null>(null);
+  
+  // Toast State
+  const [toast, setToast] = useState<ToastData>({ message: '', type: 'info', isVisible: false });
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
 
   // Load Data on Mount
   useEffect(() => {
@@ -66,12 +81,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
              links: Array.isArray(data.links) ? data.links : prev.links
         }));
       } else {
-        // Fallback: If API data is empty (Sheet baru dibuat otomatis oleh GAS),
-        // Kita gunakan DEFAULT_CONTENT lokal.
-        // OPTIONAL: Auto-seed (Simpan default ke server jika kita punya password default, 
-        // tapi karena kita butuh password, kita biarkan user save manual nanti atau pakai local storage)
         console.log("Database kosong atau baru. Menggunakan template default.");
-        
         const saved = localStorage.getItem('site_content');
         if (saved) {
             try {
@@ -102,24 +112,27 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const saveChanges = async () => {
     if (!sessionPassword) {
-        alert("Sesi habis. Silakan login ulang.");
+        showToast("Sesi telah berakhir. Silakan login kembali.", 'warning');
         openAuthModal();
         return;
     }
     
+    // Optimistic UI update notification
+    showToast("Sedang menyimpan data...", 'info');
+
     try {
       const response = await sheetApi.saveData(content, sessionPassword);
       
       if (response.success) {
           // Backup local
           localStorage.setItem('site_content', JSON.stringify(content));
-          alert("✅ Sukses! Data tersimpan di Google Sheet.");
+          showToast("Data berhasil disimpan ke Google Sheet!", 'success');
       } else {
-          alert("❌ Gagal menyimpan: " + response.message);
+          showToast("Gagal menyimpan: " + response.message, 'error');
       }
     } catch (error: any) {
       console.error("Save failed", error);
-      alert("❌ Error Koneksi. Pastikan URL Script benar.");
+      showToast("Gagal terkoneksi ke Server. Cek internet anda.", 'error');
     }
   };
 
@@ -129,6 +142,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (res.success) {
           setSessionPassword(pass);
           setIsEditing(true);
+          showToast("Login Berhasil! Mode Edit Aktif.", 'success');
       } else {
           throw new Error(res.message || "Password salah");
       }
@@ -140,6 +154,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = () => {
     setSessionPassword(null);
     setIsEditing(false);
+    showToast("Logout Berhasil.", 'info');
   };
 
   const openAuthModal = () => setIsAuthModalOpen(true);
@@ -208,7 +223,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addLink, 
       removeLink, 
       updateLink,
-      saveChanges
+      saveChanges,
+      toast,
+      showToast,
+      hideToast
     }}>
       {children}
     </ContentContext.Provider>

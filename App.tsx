@@ -4,6 +4,7 @@ import LinkTree from './components/LinkTree';
 import VirtualHumas from './components/VirtualHumas';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
+import Toast from './components/Toast';
 import { useContent } from './context/ContentContext';
 import { Upload, Loader2, PlayCircle, Image as ImageIcon } from 'lucide-react';
 import { sheetApi } from './services/sheetApi';
@@ -22,7 +23,7 @@ const getEmbedUrl = (url: string) => {
 }
 
 const App: React.FC = () => {
-  const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword } = useContent();
+  const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword, toast, hideToast, showToast } = useContent();
   const [isUploading, setIsUploading] = useState(false);
 
   // Trigger login if URL contains ?mode=admin
@@ -36,7 +37,7 @@ const App: React.FC = () => {
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || !e.target.files[0]) return;
       if (!sessionPassword) {
-          alert("Sesi habis, silakan login ulang.");
+          showToast("Sesi habis, silakan login ulang.", 'warning');
           return;
       }
 
@@ -46,11 +47,13 @@ const App: React.FC = () => {
       // Limit size (Google Script limit workaround)
       // Updated to 10MB as requested
       if (file.size > 10 * 1024 * 1024) {
-          alert("Ukuran file terlalu besar! Maksimal 10MB agar bisa disimpan di Drive.");
+          showToast("Ukuran file terlalu besar! Maksimal 10MB.", 'warning');
           return;
       }
 
       setIsUploading(true);
+      showToast("Sedang mengupload media...", 'info');
+      
       try {
           let url = await sheetApi.uploadImage(file, sessionPassword) as string;
           
@@ -66,9 +69,10 @@ const App: React.FC = () => {
           }
           
           updateOrganization('headerImage', url);
+          showToast("Media berhasil diupload!", 'success');
       } catch (error) {
           console.error("Upload failed", error);
-          alert("Gagal upload media. Coba lagi.");
+          showToast("Gagal upload media. Coba lagi.", 'error');
       } finally {
           setIsUploading(false);
       }
@@ -119,8 +123,8 @@ const App: React.FC = () => {
       style={{ 
         backgroundColor: '#f0f0f0',
         backgroundImage: `
-          linear-gradient(rgba(43, 66, 122, 0.1) 1px, transparent 1px), 
-          linear-gradient(90deg, rgba(43, 66, 122, 0.1) 1px, transparent 1px)
+          linear-gradient(rgba(16, 44, 87, 0.05) 1px, transparent 1px), 
+          linear-gradient(90deg, rgba(16, 44, 87, 0.05) 1px, transparent 1px)
         `,
         backgroundSize: '20px 20px',
         color: THEME.colors.textMain
@@ -128,6 +132,12 @@ const App: React.FC = () => {
     >
       <Navbar />
       <AuthModal />
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
 
       <main className="flex-1 w-full max-w-md mx-auto px-4 py-8 space-y-10 pb-24">
         
@@ -204,7 +214,10 @@ const App: React.FC = () => {
                     <h1 className="text-xl md:text-2xl font-black uppercase text-slate-900 leading-tight tracking-tight">
                     {content.organization.name}
                     </h1>
-                    <div className="h-1 w-20 bg-yellow-400 mx-auto my-2 border border-black"></div>
+                    <div 
+                        className="h-1 w-20 mx-auto my-2 border border-black"
+                        style={{ backgroundColor: THEME.colors.accent }}
+                    ></div>
                     <p className="text-slate-700 font-bold text-sm">
                     {content.organization.tagline}
                     </p>
@@ -216,7 +229,10 @@ const App: React.FC = () => {
         {/* INFORMATION & COLLABORATION SECTION */}
         <section className="text-center space-y-6">
           <div className="relative">
-             <h2 className="text-lg font-black uppercase tracking-wide text-slate-900 bg-yellow-300 inline-block px-3 py-1 border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]">
+             <h2 
+                className="text-lg font-black uppercase tracking-wide text-slate-900 inline-block px-3 py-1 border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]"
+                style={{ backgroundColor: THEME.colors.accent }}
+             >
                INFORMASI & KOLABORASI
              </h2>
              {isEditing ? (
@@ -259,9 +275,15 @@ const App: React.FC = () => {
           </div>
           
           <div 
-            className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black relative bg-black group transition-transform hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_#DFFF00]"
-            style={{ boxShadow: '6px 6px 0px 0px #000' }}
+            className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black relative bg-black group transition-transform hover:-translate-y-1"
+            style={{ 
+                boxShadow: '6px 6px 0px 0px #000',
+                ['--hover-shadow' as any]: `8px 8px 0px 0px ${THEME.colors.accent}`
+            }}
           >
+             {/* Dynamic hover style via inline style wasn't applying cleanly to tailwind classes, using standard hover class with style override strategy or clean class */}
+             <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: THEME.colors.accent }}></div>
+
             {/* YouTube Embed */}
             <iframe 
               width="100%" 

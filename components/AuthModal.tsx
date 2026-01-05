@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
+import { THEME } from '../constants';
 
 const AuthModal: React.FC = () => {
   const { isAuthModalOpen, closeAuthModal, login } = useContent();
@@ -41,7 +42,10 @@ const AuthModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div 
-        className="w-full max-w-sm bg-white border-2 border-black p-6 rounded-xl shadow-[8px_8px_0px_0px_#DFFF00] relative animate-in fade-in zoom-in duration-200"
+        className="w-full max-w-sm bg-white border-2 border-black p-6 rounded-xl relative animate-in fade-in zoom-in duration-200"
+        style={{
+            boxShadow: `8px 8px 0px 0px ${THEME.colors.accent}`
+        }}
       >
         <button 
           onClick={closeAuthModal}

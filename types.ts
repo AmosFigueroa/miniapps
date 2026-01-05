@@ -52,3 +52,11 @@ export interface ThemeConfig {
     textLight: string;  
   }
 }
+
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
+
+export interface ToastData {
+  message: string;
+  type: ToastType;
+  isVisible: boolean;
+}
