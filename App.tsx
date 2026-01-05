@@ -59,6 +59,7 @@ const getDirectUrl = (url: string) => {
 const App: React.FC = () => {
   const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword, toast, hideToast, showToast } = useContent();
   const [isUploading, setIsUploading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
   // Trigger login if URL contains ?mode=admin
   useEffect(() => {
@@ -67,6 +68,11 @@ const App: React.FC = () => {
         openAuthModal();
     }
   }, []);
+
+  // Reset video error when header image changes
+  useEffect(() => {
+    setVideoError(false);
+  }, [content.organization.headerImage]);
 
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || !e.target.files[0]) return;
@@ -105,7 +111,11 @@ const App: React.FC = () => {
       }
   };
 
-  const toggleHeaderFormat = () => {
+  const toggleHeaderFormat = (e?: React.MouseEvent) => {
+      if (e && typeof e.preventDefault === 'function') {
+          e.preventDefault();
+      }
+      
       const currentUrl = content.organization.headerImage;
       if (currentUrl.includes('#video')) {
           updateOrganization('headerImage', currentUrl.replace('#video', ''));
@@ -162,7 +172,9 @@ const App: React.FC = () => {
       }
 
       // Detect Video Mode
-      const isVideo = rawUrl.includes('#video') || rawUrl.match(/\.(mp4|webm|mov|ogg)$/i);
+      // If videoError is true, we force it to fall through to Image mode
+      // Added (\?|$) regex to handle query params like ?token=xyz
+      const isVideo = (rawUrl.includes('#video') || rawUrl.match(/\.(mp4|webm|mov|ogg)(\?|$)/i)) && !videoError;
       const cleanUrl = rawUrl.split('#')[0]; 
       const directUrl = getDirectUrl(cleanUrl); // Convert Drive links to Direct Links
 
@@ -176,17 +188,28 @@ const App: React.FC = () => {
                 loop 
                 muted 
                 playsInline
-                crossOrigin="anonymous"
-                onError={(e) => {
-                    console.error("Video load error", e);
-                    // Fallback visual could go here, but for now we keep it simple
+                // Removed crossOrigin="anonymous" to prevent CORS errors on public videos (like wordpress uploads)
+                onError={() => {
+                    // console.warn("Video failed to load, switching to image fallback.");
+                    setVideoError(true);
                 }}
               />
           );
       }
 
       // Render Image or GIF
-      return <img key={directUrl} src={directUrl} alt="Header" className="w-full h-full object-cover" />;
+      return (
+        <img 
+            key={directUrl} 
+            src={directUrl} 
+            alt="Header" 
+            className="w-full h-full object-cover" 
+            onError={(e) => {
+                // Prevent infinite loop if image also fails
+                e.currentTarget.style.display = 'none';
+            }}
+        />
+      );
   };
 
   return (
@@ -264,12 +287,12 @@ const App: React.FC = () => {
                             <div className="w-full max-w-[220px] px-2">
                                 <input 
                                     type="text" 
-                                    placeholder="Paste YouTube / Drive Link..."
+                                    placeholder="Link YouTube / File MP4 / URL Gambar"
                                     value={content.organization.headerImage}
                                     onChange={(e) => updateOrganization('headerImage', e.target.value)}
                                     className="w-full p-1.5 text-[10px] border border-white/50 bg-black/50 text-white placeholder-gray-400 focus:border-yellow-400 focus:outline-none text-center rounded backdrop-blur-sm"
                                 />
-                                <p className="text-[9px] text-gray-400 mt-1">*YouTube Link Direkomendasikan untuk Video Header</p>
+                                <p className="text-[9px] text-gray-400 mt-1">*Paste Link YouTube untuk Video Background</p>
                             </div>
                          </>
                      )}

@@ -168,8 +168,13 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
   };
 
-  // Content Modifiers
+  // Content Modifiers - Safe guarded
   const updateOrganization = (key: keyof ContentData['organization'], value: string) => {
+    // Sanity check to prevent Event objects or DOM nodes from entering state
+    if (typeof value !== 'string') {
+        console.warn(`Attempted to set non-string value for organization.${key}`, value);
+        return;
+    }
     setContent(prev => ({
       ...prev,
       organization: { ...prev.organization, [key]: value }
@@ -177,6 +182,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updatePodcast = (key: keyof ContentData['podcast'], value: string) => {
+    if (typeof value !== 'string') {
+        console.warn(`Attempted to set non-string value for podcast.${key}`, value);
+        return;
+    }
     setContent(prev => ({
       ...prev,
       podcast: { ...prev.podcast, [key]: value }
@@ -200,6 +209,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateLink = (id: string, field: keyof SocialLink, value: string) => {
+    if (typeof value !== 'string' && typeof value !== 'boolean') {
+        // boolean allowed for highlight, though current interface only passes strings for title/url/icon
+        // For safety, check if it's an object/function
+        if (typeof value === 'object' || typeof value === 'function') {
+             console.warn(`Attempted to set invalid value for link.${field}`, value);
+             return;
+        }
+    }
     setContent(prev => ({
       ...prev,
       links: prev.links.map(l => l.id === id ? { ...l, [field]: value } : l)
