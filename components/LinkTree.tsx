@@ -1,19 +1,43 @@
 import React from 'react';
 import { THEME } from '../constants';
 import { useContent } from '../context/ContentContext';
-import { Trash2, Plus, Phone, Instagram, Youtube, Music, Globe, Mail } from 'lucide-react';
+import { 
+  Trash2, Plus, Phone, Instagram, Youtube, Music, Globe, Mail, 
+  Facebook, Twitter, Linkedin, MessageCircle, MapPin, ShoppingBag, Github 
+} from 'lucide-react';
 
 // Icon mapping helper
 const getIcon = (iconName?: string) => {
     switch(iconName) {
         case 'Instagram': return Instagram;
         case 'Youtube': return Youtube;
-        case 'Music': return Music;
-        case 'Globe': return Globe;
+        case 'TikTok': return Music; // Menggunakan ikon Music sebagai representasi TikTok
+        case 'Facebook': return Facebook;
+        case 'Twitter': return Twitter;
+        case 'Linkedin': return Linkedin;
+        case 'WhatsApp': return MessageCircle;
+        case 'Github': return Github;
+        case 'MapPin': return MapPin;
+        case 'Shop': return ShoppingBag;
         case 'Mail': return Mail;
-        default: return Phone;
+        default: return Globe;
     }
 };
+
+const ICON_OPTIONS = [
+    { label: 'Instagram', value: 'Instagram' },
+    { label: 'TikTok', value: 'TikTok' },
+    { label: 'YouTube', value: 'Youtube' },
+    { label: 'WhatsApp', value: 'WhatsApp' },
+    { label: 'Facebook', value: 'Facebook' },
+    { label: 'Twitter', value: 'Twitter' },
+    { label: 'LinkedIn', value: 'Linkedin' },
+    { label: 'Website', value: 'Globe' },
+    { label: 'Email', value: 'Mail' },
+    { label: 'Toko/Shop', value: 'Shop' },
+    { label: 'Lokasi', value: 'MapPin' },
+    { label: 'GitHub', value: 'Github' },
+];
 
 const LinkTree: React.FC = () => {
   const { content, isEditing, addLink, removeLink, updateLink } = useContent();
@@ -84,29 +108,34 @@ const LinkTree: React.FC = () => {
           
           if (isEditing) {
               return (
-                <div key={link.id} className="flex flex-col items-center bg-white border border-black p-2 rounded-lg gap-1 relative">
+                <div key={link.id} className="flex flex-col items-center bg-white border-2 border-black p-2 rounded-lg gap-2 relative shadow-[2px_2px_0px_0px_#ccc]">
                     <button 
                         onClick={() => removeLink(link.id)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 border border-black z-10"
+                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 border-2 border-white shadow-sm z-10 hover:scale-110 transition-transform"
                     >
-                        <Trash2 size={10} />
+                        <Trash2 size={12} />
                     </button>
+                    
+                    {/* Icon Preview */}
+                    <div className="p-2 bg-gray-100 rounded-full">
+                         <Icon className="w-5 h-5 text-slate-800" />
+                    </div>
+
                     <select 
-                        value={link.iconName} 
+                        value={link.iconName || 'Globe'} 
                         onChange={(e) => updateLink(link.id, 'iconName', e.target.value)}
-                        className="text-xs border rounded mb-1 w-20"
+                        className="text-[10px] border border-gray-300 rounded p-1 w-24 focus:border-black focus:outline-none bg-white font-bold text-slate-700"
                     >
-                        <option value="Instagram">IG</option>
-                        <option value="Youtube">YT</option>
-                        <option value="Music">TikTok</option>
-                        <option value="Globe">Web</option>
-                        <option value="Mail">Mail</option>
+                        {ICON_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                     </select>
+
                     <input 
                         value={link.url}
                         onChange={(e) => updateLink(link.id, 'url', e.target.value)}
-                        className="text-[10px] w-20 border-b border-gray-300"
-                        placeholder="URL..."
+                        className="text-[10px] w-24 border-b border-gray-300 focus:border-blue-500 outline-none pb-0.5 text-center text-blue-600"
+                        placeholder="Link URL..."
                     />
                 </div>
               );
@@ -123,6 +152,7 @@ const LinkTree: React.FC = () => {
                   boxShadow: '3px 3px 0px 0px #000'
               }}
               aria-label={link.title}
+              title={link.title}
             >
               <Icon className="w-6 h-6" strokeWidth={2.5} />
             </a>
