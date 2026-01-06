@@ -56,8 +56,46 @@ const getDirectUrl = (url: string) => {
     }
 };
 
+const SkeletonLoader: React.FC = () => (
+    <div className="w-full space-y-10 animate-pulse">
+        {/* Header Section Skeleton */}
+        <div className="space-y-6 text-center">
+            <div className="w-full aspect-video rounded-xl bg-gray-300/80 border-2 border-black/10"></div>
+            
+            <div className="bg-white border-2 border-gray-200 p-4 rounded-xl space-y-4">
+                <div className="h-8 w-3/4 mx-auto bg-gray-300 rounded"></div>
+                <div className="h-1 w-20 mx-auto bg-gray-300"></div>
+                <div className="h-4 w-1/2 mx-auto bg-gray-200 rounded"></div>
+            </div>
+        </div>
+
+        {/* Info & Links Skeleton */}
+        <div className="space-y-6 flex flex-col items-center">
+            <div className="h-8 w-48 bg-gray-300 rounded transform -rotate-1"></div>
+            <div className="h-4 w-64 bg-gray-200 rounded"></div>
+
+            <div className="w-full space-y-4">
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-14 w-full max-w-xs mx-auto bg-gray-300 rounded-full"></div>
+                ))}
+            </div>
+             <div className="flex gap-4 justify-center mt-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="w-12 h-12 rounded-full bg-gray-300"></div>
+                ))}
+             </div>
+        </div>
+
+         {/* Podcast Skeleton */}
+        <div className="pt-6 border-t-4 border-dashed border-gray-300 space-y-4">
+             <div className="h-6 w-40 mx-auto bg-gray-300 rounded"></div>
+             <div className="w-full aspect-video rounded-xl bg-gray-300/80"></div>
+        </div>
+    </div>
+);
+
 const App: React.FC = () => {
-  const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword, toast, hideToast, showToast } = useContent();
+  const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword, toast, hideToast, showToast, isLoadingData } = useContent();
   const [isUploading, setIsUploading] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
@@ -236,177 +274,183 @@ const App: React.FC = () => {
 
       <main className="flex-1 w-full max-w-md mx-auto px-4 py-8 space-y-10 pb-24">
         
-        {/* HEADER SECTION */}
-        <div className="text-center space-y-6">
-          {/* Header Media Container */}
-          <div 
-            className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black bg-black flex items-center justify-center relative group"
-            style={{
-                boxShadow: `6px 6px 0px 0px ${THEME.colors.primary}`
-            }}
-          >
-             {renderHeaderMedia()}
-             
-             {/* Edit Media Overlay */}
-             {isEditing && (
-                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 gap-3 animate-in fade-in z-20">
-                     {isUploading ? (
-                         <div className="text-white flex flex-col items-center">
-                             <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                             <span className="text-xs font-bold uppercase">Mengupload Media...</span>
-                         </div>
-                     ) : (
-                         <>
-                            <div className="flex gap-4 mb-2">
-                                <label className="cursor-pointer flex flex-col items-center gap-1 text-white hover:text-yellow-300 transition-colors group/btn">
-                                    <div className="p-2 bg-white/10 rounded-full group-hover/btn:bg-white/20 transition-colors">
-                                        <Upload className="w-5 h-5" />
+        {isLoadingData ? (
+            <SkeletonLoader />
+        ) : (
+            <>
+                {/* HEADER SECTION */}
+                <div className="text-center space-y-6">
+                {/* Header Media Container */}
+                <div 
+                    className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black bg-black flex items-center justify-center relative group"
+                    style={{
+                        boxShadow: `6px 6px 0px 0px ${THEME.colors.primary}`
+                    }}
+                >
+                    {renderHeaderMedia()}
+                    
+                    {/* Edit Media Overlay */}
+                    {isEditing && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 gap-3 animate-in fade-in z-20">
+                            {isUploading ? (
+                                <div className="text-white flex flex-col items-center">
+                                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                    <span className="text-xs font-bold uppercase">Mengupload Media...</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex gap-4 mb-2">
+                                        <label className="cursor-pointer flex flex-col items-center gap-1 text-white hover:text-yellow-300 transition-colors group/btn">
+                                            <div className="p-2 bg-white/10 rounded-full group-hover/btn:bg-white/20 transition-colors">
+                                                <Upload className="w-5 h-5" />
+                                            </div>
+                                            <span className="text-[10px] font-bold uppercase">Upload</span>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*,video/mp4,video/webm"
+                                                onChange={handleMediaUpload}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                        
+                                        <button 
+                                            onClick={toggleHeaderFormat}
+                                            className="flex flex-col items-center gap-1 text-white hover:text-yellow-300 transition-colors group/btn"
+                                        >
+                                            <div className="p-2 bg-white/10 rounded-full group-hover/btn:bg-white/20 transition-colors">
+                                                {content.organization.headerImage.includes('#video') ? <PlayCircle className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+                                            </div>
+                                            <span className="text-[10px] font-bold uppercase">
+                                                Format: {content.organization.headerImage.includes('#video') ? 'Video' : 'Gambar'}
+                                            </span>
+                                        </button>
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase">Upload</span>
-                                    <input 
-                                        type="file" 
-                                        accept="image/*,video/mp4,video/webm"
-                                        onChange={handleMediaUpload}
-                                        className="hidden"
-                                    />
-                                </label>
-                                
-                                <button 
-                                    onClick={toggleHeaderFormat}
-                                    className="flex flex-col items-center gap-1 text-white hover:text-yellow-300 transition-colors group/btn"
-                                >
-                                    <div className="p-2 bg-white/10 rounded-full group-hover/btn:bg-white/20 transition-colors">
-                                        {content.organization.headerImage.includes('#video') ? <PlayCircle className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+
+                                    <div className="w-full max-w-[220px] px-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Link YouTube / File MP4 / URL Gambar"
+                                            value={content.organization.headerImage}
+                                            onChange={(e) => updateOrganization('headerImage', e.target.value)}
+                                            className="w-full p-1.5 text-[10px] border border-white/50 bg-black/50 text-white placeholder-gray-400 focus:border-yellow-400 focus:outline-none text-center rounded backdrop-blur-sm"
+                                        />
+                                        <p className="text-[9px] text-gray-400 mt-1">*Paste Link YouTube untuk Video Background</p>
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase">
-                                        Format: {content.organization.headerImage.includes('#video') ? 'Video' : 'Gambar'}
-                                    </span>
-                                </button>
-                            </div>
-
-                            <div className="w-full max-w-[220px] px-2">
-                                <input 
-                                    type="text" 
-                                    placeholder="Link YouTube / File MP4 / URL Gambar"
-                                    value={content.organization.headerImage}
-                                    onChange={(e) => updateOrganization('headerImage', e.target.value)}
-                                    className="w-full p-1.5 text-[10px] border border-white/50 bg-black/50 text-white placeholder-gray-400 focus:border-yellow-400 focus:outline-none text-center rounded backdrop-blur-sm"
-                                />
-                                <p className="text-[9px] text-gray-400 mt-1">*Paste Link YouTube untuk Video Background</p>
-                            </div>
-                         </>
-                     )}
-                 </div>
-             )}
-          </div>
-
-          {/* Titles */}
-          <div className={`bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_#000] ${isEditing ? 'ring-2 ring-yellow-400 ring-offset-2' : ''}`}>
-            {isEditing ? (
-                <div className="space-y-2">
-                    <input 
-                        value={content.organization.name}
-                        onChange={(e) => updateOrganization('name', e.target.value)}
-                        className="w-full text-center text-xl md:text-2xl font-black uppercase text-slate-900 border-b-2 border-gray-200 focus:border-blue-500 outline-none"
-                        placeholder="NAMA ORGANISASI"
-                    />
-                    <div className="h-1 w-20 bg-yellow-400 mx-auto my-2 border border-black"></div>
-                    <input 
-                        value={content.organization.tagline}
-                        onChange={(e) => updateOrganization('tagline', e.target.value)}
-                        className="w-full text-center text-slate-700 font-bold text-sm border-b-2 border-gray-200 focus:border-blue-500 outline-none"
-                        placeholder="Tagline / Slogan"
-                    />
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <>
-                    <h1 className="text-xl md:text-2xl font-black uppercase text-slate-900 leading-tight tracking-tight">
-                    {content.organization.name}
-                    </h1>
-                    <div 
-                        className="h-1 w-20 mx-auto my-2 border border-black"
+
+                {/* Titles */}
+                <div className={`bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_#000] ${isEditing ? 'ring-2 ring-yellow-400 ring-offset-2' : ''}`}>
+                    {isEditing ? (
+                        <div className="space-y-2">
+                            <input 
+                                value={content.organization.name}
+                                onChange={(e) => updateOrganization('name', e.target.value)}
+                                className="w-full text-center text-xl md:text-2xl font-black uppercase text-slate-900 border-b-2 border-gray-200 focus:border-blue-500 outline-none"
+                                placeholder="NAMA ORGANISASI"
+                            />
+                            <div className="h-1 w-20 bg-yellow-400 mx-auto my-2 border border-black"></div>
+                            <input 
+                                value={content.organization.tagline}
+                                onChange={(e) => updateOrganization('tagline', e.target.value)}
+                                className="w-full text-center text-slate-700 font-bold text-sm border-b-2 border-gray-200 focus:border-blue-500 outline-none"
+                                placeholder="Tagline / Slogan"
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            <h1 className="text-xl md:text-2xl font-black uppercase text-slate-900 leading-tight tracking-tight">
+                            {content.organization.name}
+                            </h1>
+                            <div 
+                                className="h-1 w-20 mx-auto my-2 border border-black"
+                                style={{ backgroundColor: THEME.colors.accent }}
+                            ></div>
+                            <p className="text-slate-700 font-bold text-sm">
+                            {content.organization.tagline}
+                            </p>
+                        </>
+                    )}
+                </div>
+                </div>
+
+                {/* INFORMATION & COLLABORATION SECTION */}
+                <section className="text-center space-y-6">
+                <div className="relative">
+                    <h2 
+                        className="text-lg font-black uppercase tracking-wide text-slate-900 inline-block px-3 py-1 border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]"
                         style={{ backgroundColor: THEME.colors.accent }}
-                    ></div>
-                    <p className="text-slate-700 font-bold text-sm">
-                    {content.organization.tagline}
-                    </p>
-                </>
-            )}
-          </div>
-        </div>
+                    >
+                    INFORMASI & KOLABORASI
+                    </h2>
+                    {isEditing ? (
+                        <input 
+                            value={content.organization.description}
+                            onChange={(e) => updateOrganization('description', e.target.value)}
+                            className="block w-full text-center text-sm font-bold text-slate-600 mt-4 border border-dashed border-gray-400 p-1 bg-transparent"
+                        />
+                    ) : (
+                        <p className="text-sm font-bold text-slate-600 mt-4">
+                        {content.organization.description || "Silakan Hubungi Nomor Di Bawah"}
+                        </p>
+                    )}
+                </div>
+                
+                <LinkTree />
+                </section>
 
-        {/* INFORMATION & COLLABORATION SECTION */}
-        <section className="text-center space-y-6">
-          <div className="relative">
-             <h2 
-                className="text-lg font-black uppercase tracking-wide text-slate-900 inline-block px-3 py-1 border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]"
-                style={{ backgroundColor: THEME.colors.accent }}
-             >
-               INFORMASI & KOLABORASI
-             </h2>
-             {isEditing ? (
-                 <input 
-                    value={content.organization.description}
-                    onChange={(e) => updateOrganization('description', e.target.value)}
-                    className="block w-full text-center text-sm font-bold text-slate-600 mt-4 border border-dashed border-gray-400 p-1 bg-transparent"
-                 />
-             ) : (
-                <p className="text-sm font-bold text-slate-600 mt-4">
-                 {content.organization.description || "Silakan Hubungi Nomor Di Bawah"}
-                </p>
-             )}
-          </div>
-          
-          <LinkTree />
-        </section>
+                {/* PODCAST SECTION */}
+                <section className="text-center space-y-6 pt-6 border-t-4 border-black border-dashed">
+                <div className="flex flex-col items-center gap-2">
+                    <h2 className="text-xl font-black text-slate-900 flex items-center justify-center gap-2">
+                        <span className="w-3 h-3 bg-red-500 rounded-full border border-black animate-pulse"></span>
+                        {isEditing ? (
+                            <input 
+                                value={content.podcast.title}
+                                onChange={(e) => updatePodcast('title', e.target.value)}
+                                className="bg-transparent border-b border-black text-center focus:outline-none"
+                            />
+                        ) : content.podcast.title}
+                    </h2>
+                    {isEditing && (
+                        <input 
+                            value={content.podcast.videoUrl}
+                            onChange={(e) => updatePodcast('videoUrl', e.target.value)}
+                            placeholder="Paste YouTube Link Here..."
+                            className="text-xs p-1 border border-gray-300 rounded w-full max-w-xs text-center"
+                        />
+                    )}
+                </div>
+                
+                <div 
+                    className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black relative bg-black group transition-transform hover:-translate-y-1"
+                    style={{ 
+                        boxShadow: '6px 6px 0px 0px #000',
+                        ['--hover-shadow' as any]: `8px 8px 0px 0px ${THEME.colors.accent}`
+                    }}
+                >
+                    {/* Dynamic hover style via inline style wasn't applying cleanly to tailwind classes, using standard hover class with style override strategy or clean class */}
+                    <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: THEME.colors.accent }}></div>
 
-        {/* PODCAST SECTION */}
-        <section className="text-center space-y-6 pt-6 border-t-4 border-black border-dashed">
-          <div className="flex flex-col items-center gap-2">
-              <h2 className="text-xl font-black text-slate-900 flex items-center justify-center gap-2">
-                <span className="w-3 h-3 bg-red-500 rounded-full border border-black animate-pulse"></span>
-                {isEditing ? (
-                    <input 
-                        value={content.podcast.title}
-                        onChange={(e) => updatePodcast('title', e.target.value)}
-                        className="bg-transparent border-b border-black text-center focus:outline-none"
-                    />
-                ) : content.podcast.title}
-              </h2>
-              {isEditing && (
-                  <input 
-                    value={content.podcast.videoUrl}
-                    onChange={(e) => updatePodcast('videoUrl', e.target.value)}
-                    placeholder="Paste YouTube Link Here..."
-                    className="text-xs p-1 border border-gray-300 rounded w-full max-w-xs text-center"
-                  />
-              )}
-          </div>
-          
-          <div 
-            className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black relative bg-black group transition-transform hover:-translate-y-1"
-            style={{ 
-                boxShadow: '6px 6px 0px 0px #000',
-                ['--hover-shadow' as any]: `8px 8px 0px 0px ${THEME.colors.accent}`
-            }}
-          >
-             {/* Dynamic hover style via inline style wasn't applying cleanly to tailwind classes, using standard hover class with style override strategy or clean class */}
-             <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: THEME.colors.accent }}></div>
-
-            {/* YouTube Embed - KEY ADDED FOR RELOAD */}
-            <iframe 
-              key={content.podcast.videoUrl}
-              width="100%" 
-              height="100%" 
-              src={`${getEmbedUrl(content.podcast.videoUrl)}?autoplay=1&mute=1&controls=1&rel=0&playsinline=1`}
-              title="YouTube video player" 
-              frameBorder="0" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen
-              className="absolute inset-0"
-            ></iframe>
-          </div>
-        </section>
+                    {/* YouTube Embed - KEY ADDED FOR RELOAD */}
+                    <iframe 
+                    key={content.podcast.videoUrl}
+                    width="100%" 
+                    height="100%" 
+                    src={`${getEmbedUrl(content.podcast.videoUrl)}?autoplay=1&mute=1&controls=1&rel=0&playsinline=1`}
+                    title="YouTube video player" 
+                    frameBorder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowFullScreen
+                    className="absolute inset-0"
+                    ></iframe>
+                </div>
+                </section>
+            </>
+        )}
 
       </main>
 

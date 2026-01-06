@@ -59,7 +59,7 @@ const AuthModal: React.FC = () => {
             <Lock size={24} />
           </div>
           <h2 className="text-xl font-black uppercase text-center">Akses Admin</h2>
-          <p className="text-xs text-center text-gray-500">Masukkan Password Admin (Default: admin)</p>
+          <p className="text-xs text-center text-gray-500">Masukkan Password Admin</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

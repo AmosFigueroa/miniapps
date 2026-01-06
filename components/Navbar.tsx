@@ -18,9 +18,13 @@ const Navbar: React.FC = () => {
            />
         </div>
         <div className="flex flex-col justify-center min-h-[40px]">
-            <span className="text-sm sm:text-base font-black tracking-tighter text-slate-900 uppercase leading-tight line-clamp-1">
-                {content.organization.name || (isLoadingData ? "..." : "")}
-            </span>
+            {isLoadingData ? (
+                <div className="h-5 w-32 bg-gray-200 animate-pulse rounded"></div>
+            ) : (
+                <span className="text-sm sm:text-base font-black tracking-tighter text-slate-900 uppercase leading-tight line-clamp-1">
+                    {content.organization.name}
+                </span>
+            )}
         </div>
       </div>
 
