@@ -1,5 +1,4 @@
 import React from 'react';
-import { THEME } from '../constants';
 import { useContent } from '../context/ContentContext';
 import { 
   Trash2, Plus, Phone, Instagram, Youtube, Globe, Mail, 
@@ -64,6 +63,7 @@ const ICON_OPTIONS = [
 
 const LinkTree: React.FC = () => {
   const { content, isEditing, addLink, removeLink, updateLink } = useContent();
+  const theme = content.theme;
   const contactLinks = content.links.filter(link => link.category === 'contact');
   const socialLinks = content.links.filter(link => link.category === 'social');
 
@@ -76,18 +76,20 @@ const LinkTree: React.FC = () => {
           <div key={link.id} className="relative group max-w-xs mx-auto">
               {isEditing ? (
                   <div 
-                    className="flex flex-col gap-2 p-3 border-2 border-black bg-white rounded-xl shadow-[4px_4px_0px_0px_#ccc]"
+                    className="flex flex-col gap-2 p-3 border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_#ccc]"
+                    style={{ backgroundColor: theme.cardBackground }}
                   >
                       <input 
                         value={link.title}
                         onChange={(e) => updateLink(link.id, 'title', e.target.value)}
-                        className="font-bold border-b border-gray-300 focus:outline-none focus:border-black transition-colors"
+                        className="font-bold border-b border-gray-300 focus:outline-none focus:border-black transition-colors bg-transparent"
                         placeholder="Label Tombol"
+                        style={{ color: theme.textMain }}
                       />
                       <input 
                         value={link.url}
                         onChange={(e) => updateLink(link.id, 'url', e.target.value)}
-                        className="text-xs text-blue-600 border-b border-gray-300 focus:outline-none focus:border-blue-500 transition-colors"
+                        className="text-xs text-blue-600 border-b border-gray-300 focus:outline-none focus:border-blue-500 transition-colors bg-transparent"
                         placeholder="https://..."
                       />
                       <div className="flex justify-between items-center mt-1">
@@ -105,10 +107,11 @@ const LinkTree: React.FC = () => {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full py-3 px-6 rounded-full text-center font-black text-white uppercase tracking-wider border-2 border-black transition-all hover:-translate-y-1 hover:shadow-none active:translate-y-1"
+                    className="block w-full py-3 px-6 rounded-full text-center font-black uppercase tracking-wider border-2 border-black transition-all hover:-translate-y-1 hover:shadow-none active:translate-y-1"
                     style={{ 
-                    backgroundColor: THEME.colors.primary,
-                    boxShadow: `4px 4px 0px 0px #000` // Hard Black Shadow
+                        backgroundColor: theme.primaryButton,
+                        color: theme.buttonText,
+                        boxShadow: `4px 4px 0px 0px #000` // Hard Black Shadow remains black for style
                     }}
                 >
                     {link.title}
@@ -120,7 +123,7 @@ const LinkTree: React.FC = () => {
         {isEditing && (
             <button 
                 onClick={() => addLink('contact')}
-                className="w-full max-w-xs mx-auto py-2 border-2 border-dashed border-gray-400 text-gray-500 font-bold rounded-lg hover:bg-gray-50 flex justify-center items-center gap-2"
+                className="w-full max-w-xs mx-auto py-2 border-2 border-dashed border-gray-400 text-gray-500 font-bold rounded-lg hover:bg-white/50 flex justify-center items-center gap-2"
             >
                 <Plus size={18} /> Tambah Tombol Utama
             </button>
@@ -134,7 +137,7 @@ const LinkTree: React.FC = () => {
           
           if (isEditing) {
               return (
-                <div key={link.id} className="flex flex-col items-center bg-white border-2 border-black p-2 rounded-lg gap-2 relative shadow-[3px_3px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] transition-shadow">
+                <div key={link.id} className="flex flex-col items-center border-2 border-black p-2 rounded-lg gap-2 relative shadow-[3px_3px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] transition-shadow" style={{ backgroundColor: theme.cardBackground }}>
                     <button 
                         onClick={() => removeLink(link.id)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 border-2 border-white shadow-sm z-10 hover:scale-110 transition-transform"
@@ -155,7 +158,8 @@ const LinkTree: React.FC = () => {
                             <select 
                                 value={link.iconName || 'Globe'} 
                                 onChange={(e) => updateLink(link.id, 'iconName', e.target.value)}
-                                className="w-28 text-[11px] font-bold border-2 border-black rounded-md py-1 px-1 bg-yellow-50 focus:outline-none focus:bg-white cursor-pointer"
+                                className="w-28 text-[11px] font-bold border-2 border-black rounded-md py-1 px-1 focus:outline-none focus:bg-white cursor-pointer"
+                                style={{ backgroundColor: theme.accent, color: theme.textMain }}
                             >
                                 {ICON_OPTIONS.map((opt) => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -180,9 +184,17 @@ const LinkTree: React.FC = () => {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 rounded-full bg-white text-slate-900 border-2 border-black transition-all hover:-translate-y-1 hover:bg-yellow-300 group"
+              className="p-3 rounded-full border-2 border-black transition-all hover:-translate-y-1 group"
               style={{ 
+                  backgroundColor: theme.cardBackground,
+                  color: theme.textMain,
                   boxShadow: '3px 3px 0px 0px #000'
+              }}
+              onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.accent;
+              }}
+              onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.cardBackground;
               }}
               aria-label={link.title}
               title={link.title}

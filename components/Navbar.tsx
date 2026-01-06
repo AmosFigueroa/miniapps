@@ -1,13 +1,16 @@
 import React from 'react';
 import { Pencil, Save, LogOut } from 'lucide-react';
-import { THEME } from '../constants';
 import { useContent } from '../context/ContentContext';
 
 const Navbar: React.FC = () => {
   const { content, isEditing, toggleEditMode, sessionPassword, logout, saveChanges, isLoadingData } = useContent();
+  const theme = content.theme;
 
   return (
-    <nav className={`sticky top-0 z-40 bg-white border-b-2 border-black px-4 py-3 flex items-center justify-center shadow-sm font-sans transition-colors relative min-h-[64px] ${isEditing ? 'bg-yellow-50' : ''}`}>
+    <nav 
+        className="sticky top-0 z-40 border-b-2 border-black px-4 py-3 flex items-center justify-center shadow-sm font-sans transition-colors relative min-h-[64px]"
+        style={{ backgroundColor: theme.navbar }}
+    >
       {/* Logo & Name Container */}
       <div className="flex items-center gap-3">
         <div className="shrink-0 w-10 h-10 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_#000] overflow-hidden bg-white">
@@ -21,7 +24,10 @@ const Navbar: React.FC = () => {
             {isLoadingData ? (
                 <div className="h-5 w-32 bg-gray-200 animate-pulse rounded"></div>
             ) : (
-                <span className="text-sm sm:text-base font-black tracking-tighter text-slate-900 uppercase leading-tight line-clamp-1">
+                <span 
+                    className="text-sm sm:text-base font-black tracking-tighter uppercase leading-tight line-clamp-1"
+                    style={{ color: theme.textMain }}
+                >
                     {content.organization.name}
                 </span>
             )}

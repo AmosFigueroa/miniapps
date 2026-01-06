@@ -4,7 +4,7 @@ export interface SocialLink {
   id: string;
   title: string;
   url: string;
-  iconName?: string; // Changed from icon object to string name for storage
+  iconName?: string;
   category: 'contact' | 'social';
   highlight?: boolean;
 }
@@ -26,21 +26,35 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+// New Interface for User Customizable Theme
+export interface ThemeSettings {
+  background: string;     // Warna Latar Belakang Halaman
+  cardBackground: string; // Warna Latar Kotak (Judul/Links)
+  textMain: string;       // Warna Teks Utama
+  primaryButton: string;  // Warna Tombol Utama (Linktree)
+  buttonText: string;     // Warna Teks di dalam Tombol
+  accent: string;         // Warna Shadow/Garis/Highlight
+  navbar: string;         // Warna Navbar
+}
+
 // Global Content State Interface
 export interface ContentData {
   organization: {
     name: string;
     tagline: string;
     description: string;
-    headerImage: string; // URL for header image
+    headerImage: string;
+    sectionTitle: string; // Added editable section title
   };
   podcast: {
     title: string;
-    videoUrl: string; // Youtube URL
+    videoUrl: string;
   };
   links: SocialLink[];
+  theme: ThemeSettings; // Added theme property
 }
 
+// Deprecated but kept for type safety in other files until refactored
 export interface ThemeConfig {
   colors: {
     primary: string;    

@@ -1,21 +1,33 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ContentData, SocialLink, ToastData, ToastType } from '../types';
-import { ORGANIZATION_INFO, SOCIAL_LINKS } from '../constants';
+import { ContentData, SocialLink, ToastData, ToastType, ThemeSettings } from '../types';
 import { sheetApi } from '../services/sheetApi';
 
-// Initial Default Data - Empty to ensure no dummy data is shown
+// Initial Default Theme
+const DEFAULT_THEME: ThemeSettings = {
+    background: '#f0f0f0',
+    cardBackground: '#ffffff',
+    textMain: '#102C57',
+    primaryButton: '#102C57',
+    buttonText: '#ffffff',
+    accent: '#FFC300',
+    navbar: '#ffffff'
+};
+
+// Initial Default Data
 const DEFAULT_CONTENT: ContentData = {
   organization: {
     name: "",
     tagline: "",
     description: "",
     headerImage: '',
+    sectionTitle: "INFORMASI & KOLABORASI", // Default Value
   },
   podcast: {
     title: "",
     videoUrl: "",
   },
-  links: []
+  links: [],
+  theme: DEFAULT_THEME
 };
 
 interface ContentContextType {
@@ -30,6 +42,7 @@ interface ContentContextType {
   logout: () => void;
   updateOrganization: (key: keyof ContentData['organization'], value: string) => void;
   updatePodcast: (key: keyof ContentData['podcast'], value: string) => void;
+  updateTheme: (key: keyof ThemeSettings, value: string) => void;
   addLink: (category: 'contact' | 'social') => void;
   removeLink: (id: string) => void;
   updateLink: (id: string, field: keyof SocialLink, value: string) => void;
@@ -76,38 +89,40 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setContent((prev) => ({
              ...prev,
              ...data,
-             organization: { ...prev.organization, ...data.organization },
+             organization: { 
+                 ...DEFAULT_CONTENT.organization, // Ensure defaults
+                 ...prev.organization, 
+                 ...data.organization 
+             },
              podcast: { ...prev.podcast, ...data.podcast },
-             links: Array.isArray(data.links) ? data.links : prev.links
+             links: Array.isArray(data.links) ? data.links : prev.links,
+             // Merge theme carefully to ensure all keys exist if new keys were added to code later
+             theme: { ...DEFAULT_THEME, ...data.theme } 
         }));
       } else {
-        console.log("Database kosong atau baru. Mengecek local storage...");
-        const saved = localStorage.getItem('site_content');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (parsed && parsed.organization) {
-                    setContent(parsed);
-                }
-            } catch (e) {
-                console.error("Local storage corrupted", e);
-            }
-        }
+        loadFromLocal();
       }
     } catch (error) {
       console.log("Failed to fetch from Google Sheet, using local/default.", error);
+      loadFromLocal();
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const loadFromLocal = () => {
       const saved = localStorage.getItem('site_content');
       if (saved) {
          try {
              const parsed = JSON.parse(saved);
              if (parsed && parsed.organization) {
-                 setContent(parsed);
+                 // Ensure theme exists when loading from old local storage
+                 const theme = parsed.theme ? { ...DEFAULT_THEME, ...parsed.theme } : DEFAULT_THEME;
+                 const organization = { ...DEFAULT_CONTENT.organization, ...parsed.organization };
+                 setContent({ ...parsed, organization, theme });
              }
          } catch (e) {}
       }
-    } finally {
-      setIsLoadingData(false);
-    }
   };
 
   const saveChanges = async () => {
@@ -117,14 +132,12 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
     }
     
-    // Optimistic UI update notification
     showToast("Sedang menyimpan data...", 'info');
 
     try {
       const response = await sheetApi.saveData(content, sessionPassword);
       
       if (response.success) {
-          // Backup local
           localStorage.setItem('site_content', JSON.stringify(content));
           showToast("Data berhasil disimpan ke Google Sheet!", 'success');
       } else {
@@ -168,13 +181,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
   };
 
-  // Content Modifiers - Safe guarded
   const updateOrganization = (key: keyof ContentData['organization'], value: string) => {
-    // Sanity check to prevent Event objects or DOM nodes from entering state
-    if (typeof value !== 'string') {
-        console.warn(`Attempted to set non-string value for organization.${key}`, value);
-        return;
-    }
     setContent(prev => ({
       ...prev,
       organization: { ...prev.organization, [key]: value }
@@ -182,14 +189,17 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updatePodcast = (key: keyof ContentData['podcast'], value: string) => {
-    if (typeof value !== 'string') {
-        console.warn(`Attempted to set non-string value for podcast.${key}`, value);
-        return;
-    }
     setContent(prev => ({
       ...prev,
       podcast: { ...prev.podcast, [key]: value }
     }));
+  };
+
+  const updateTheme = (key: keyof ThemeSettings, value: string) => {
+      setContent(prev => ({
+          ...prev,
+          theme: { ...prev.theme, [key]: value }
+      }));
   };
 
   const addLink = (category: 'contact' | 'social') => {
@@ -209,14 +219,6 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateLink = (id: string, field: keyof SocialLink, value: string) => {
-    if (typeof value !== 'string' && typeof value !== 'boolean') {
-        // boolean allowed for highlight, though current interface only passes strings for title/url/icon
-        // For safety, check if it's an object/function
-        if (typeof value === 'object' || typeof value === 'function') {
-             console.warn(`Attempted to set invalid value for link.${field}`, value);
-             return;
-        }
-    }
     setContent(prev => ({
       ...prev,
       links: prev.links.map(l => l.id === id ? { ...l, [field]: value } : l)
@@ -237,6 +239,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       logout,
       updateOrganization, 
       updatePodcast,
+      updateTheme,
       addLink, 
       removeLink, 
       updateLink,

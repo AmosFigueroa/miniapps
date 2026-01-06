@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { THEME } from './constants';
 import LinkTree from './components/LinkTree';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Toast from './components/Toast';
+import ThemeEditor from './components/ThemeEditor';
 import { useContent } from './context/ContentContext';
 import { Upload, Loader2, PlayCircle, Image as ImageIcon } from 'lucide-react';
 import { sheetApi } from './services/sheetApi';
@@ -98,6 +98,7 @@ const App: React.FC = () => {
   const { content, isEditing, updateOrganization, updatePodcast, openAuthModal, sessionPassword, toast, hideToast, showToast, isLoadingData } = useContent();
   const [isUploading, setIsUploading] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const theme = content.theme;
 
   // Trigger login if URL contains ?mode=admin
   useEffect(() => {
@@ -134,7 +135,6 @@ const App: React.FC = () => {
       try {
           let url = await sheetApi.uploadImage(file, sessionPassword) as string;
           
-          // Add #video hash solely for internal identification later
           if (isVideo) {
              url += '#video';
           }
@@ -183,59 +183,45 @@ const App: React.FC = () => {
           );
       }
 
-      // Check for YouTube Link in Header
       if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
            const embedUrl = getEmbedUrl(rawUrl);
-           // Robustly extract ID for playlist param (essential for looping single video)
            const videoId = embedUrl.split('embed/')[1]?.split('?')[0]; 
-           
-           // Updated Params:
-           // autoplay=1&mute=1 : Forced Autoplay (Muted)
-           // controls=0 : Hides player controls for "Background" look
-           // loop=1&playlist=[ID] : Loops the single video
-           // playsinline=1 : Essential for iOS
            const headerVideoSrc = `${embedUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0`;
            
            return (
               <iframe 
-                key={headerVideoSrc} // Force reload when URL changes
+                key={headerVideoSrc} 
                 src={headerVideoSrc}
                 title="Header Video"
                 className="w-full h-full object-cover"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 frameBorder="0"
-                style={{ pointerEvents: 'none' }} // Re-added pointer-events-none for true background feel, assuming mute=1 works
+                style={{ pointerEvents: 'none' }} 
               />
            );
       }
 
-      // Detect Video Mode
-      // If videoError is true, we force it to fall through to Image mode
-      // Added (\?|$) regex to handle query params like ?token=xyz
       const isVideo = (rawUrl.includes('#video') || rawUrl.match(/\.(mp4|webm|mov|ogg)(\?|$)/i)) && !videoError;
       const cleanUrl = rawUrl.split('#')[0]; 
-      const directUrl = getDirectUrl(cleanUrl); // Convert Drive links to Direct Links
+      const directUrl = getDirectUrl(cleanUrl); 
 
       if (isVideo) {
           return (
               <video 
-                key={directUrl} // FORCE RELOAD when URL changes
+                key={directUrl} 
                 src={directUrl} 
                 className="w-full h-full object-cover"
                 autoPlay 
                 loop 
                 muted 
                 playsInline
-                // Removed crossOrigin="anonymous" to prevent CORS errors on public videos (like wordpress uploads)
                 onError={() => {
-                    // console.warn("Video failed to load, switching to image fallback.");
                     setVideoError(true);
                 }}
               />
           );
       }
 
-      // Render Image or GIF
       return (
         <img 
             key={directUrl} 
@@ -243,7 +229,6 @@ const App: React.FC = () => {
             alt="Header" 
             className="w-full h-full object-cover" 
             onError={(e) => {
-                // Prevent infinite loop if image also fails
                 e.currentTarget.style.display = 'none';
             }}
         />
@@ -252,19 +237,20 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen flex flex-col font-sans selection:bg-yellow-300 selection:text-black"
+      className="min-h-screen flex flex-col font-sans selection:bg-yellow-300 selection:text-black transition-colors duration-300"
       style={{ 
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.background,
         backgroundImage: `
-          linear-gradient(rgba(16, 44, 87, 0.05) 1px, transparent 1px), 
-          linear-gradient(90deg, rgba(16, 44, 87, 0.05) 1px, transparent 1px)
+          linear-gradient(rgba(0,0,0, 0.05) 1px, transparent 1px), 
+          linear-gradient(90deg, rgba(0,0,0, 0.05) 1px, transparent 1px)
         `,
         backgroundSize: '20px 20px',
-        color: THEME.colors.textMain
+        color: theme.textMain
       }}
     >
       <Navbar />
       <AuthModal />
+      <ThemeEditor />
       <Toast 
         message={toast.message}
         type={toast.type}
@@ -284,7 +270,7 @@ const App: React.FC = () => {
                 <div 
                     className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black bg-black flex items-center justify-center relative group"
                     style={{
-                        boxShadow: `6px 6px 0px 0px ${THEME.colors.primary}`
+                        boxShadow: `6px 6px 0px 0px ${theme.accent}`
                     }}
                 >
                     {renderHeaderMedia()}
@@ -343,33 +329,38 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Titles */}
-                <div className={`bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_#000] ${isEditing ? 'ring-2 ring-yellow-400 ring-offset-2' : ''}`}>
+                <div 
+                    className={`border-2 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_#000] ${isEditing ? 'ring-2 ring-yellow-400 ring-offset-2' : ''}`}
+                    style={{ backgroundColor: theme.cardBackground }}
+                >
                     {isEditing ? (
                         <div className="space-y-2">
                             <input 
                                 value={content.organization.name}
                                 onChange={(e) => updateOrganization('name', e.target.value)}
-                                className="w-full text-center text-xl md:text-2xl font-black uppercase text-slate-900 border-b-2 border-gray-200 focus:border-blue-500 outline-none"
+                                className="w-full text-center text-xl md:text-2xl font-black uppercase border-b-2 border-gray-200 focus:border-blue-500 outline-none bg-transparent"
+                                style={{ color: theme.textMain }}
                                 placeholder="NAMA ORGANISASI"
                             />
-                            <div className="h-1 w-20 bg-yellow-400 mx-auto my-2 border border-black"></div>
+                            <div className="h-1 w-20 mx-auto my-2 border border-black" style={{ backgroundColor: theme.accent }}></div>
                             <input 
                                 value={content.organization.tagline}
                                 onChange={(e) => updateOrganization('tagline', e.target.value)}
-                                className="w-full text-center text-slate-700 font-bold text-sm border-b-2 border-gray-200 focus:border-blue-500 outline-none"
+                                className="w-full text-center font-bold text-sm border-b-2 border-gray-200 focus:border-blue-500 outline-none bg-transparent opacity-80"
+                                style={{ color: theme.textMain }}
                                 placeholder="Tagline / Slogan"
                             />
                         </div>
                     ) : (
                         <>
-                            <h1 className="text-xl md:text-2xl font-black uppercase text-slate-900 leading-tight tracking-tight">
+                            <h1 className="text-xl md:text-2xl font-black uppercase leading-tight tracking-tight" style={{ color: theme.textMain }}>
                             {content.organization.name}
                             </h1>
                             <div 
                                 className="h-1 w-20 mx-auto my-2 border border-black"
-                                style={{ backgroundColor: THEME.colors.accent }}
+                                style={{ backgroundColor: theme.accent }}
                             ></div>
-                            <p className="text-slate-700 font-bold text-sm">
+                            <p className="font-bold text-sm opacity-80" style={{ color: theme.textMain }}>
                             {content.organization.tagline}
                             </p>
                         </>
@@ -380,20 +371,37 @@ const App: React.FC = () => {
                 {/* INFORMATION & COLLABORATION SECTION */}
                 <section className="text-center space-y-6">
                 <div className="relative">
-                    <h2 
-                        className="text-lg font-black uppercase tracking-wide text-slate-900 inline-block px-3 py-1 border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]"
-                        style={{ backgroundColor: THEME.colors.accent }}
-                    >
-                    INFORMASI & KOLABORASI
-                    </h2>
+                    {isEditing ? (
+                         <div 
+                            className="inline-block border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]"
+                            style={{ backgroundColor: theme.accent }}
+                         >
+                            <input 
+                                value={content.organization.sectionTitle || "INFORMASI & KOLABORASI"}
+                                onChange={(e) => updateOrganization('sectionTitle', e.target.value)}
+                                className="text-lg font-black uppercase tracking-wide px-3 py-1 bg-transparent text-center focus:outline-none min-w-[200px]"
+                                style={{ color: theme.textMain }}
+                                placeholder="JUDUL SECTION"
+                            />
+                         </div>
+                    ) : (
+                        <h2 
+                            className="text-lg font-black uppercase tracking-wide inline-block px-3 py-1 border-2 border-black transform -rotate-1 shadow-[3px_3px_0px_0px_#000]"
+                            style={{ backgroundColor: theme.accent, color: theme.textMain }}
+                        >
+                        {content.organization.sectionTitle || "INFORMASI & KOLABORASI"}
+                        </h2>
+                    )}
+                    
                     {isEditing ? (
                         <input 
                             value={content.organization.description}
                             onChange={(e) => updateOrganization('description', e.target.value)}
-                            className="block w-full text-center text-sm font-bold text-slate-600 mt-4 border border-dashed border-gray-400 p-1 bg-transparent"
+                            className="block w-full text-center text-sm font-bold mt-4 border border-dashed border-gray-400 p-1 bg-transparent"
+                            style={{ color: theme.textMain }}
                         />
                     ) : (
-                        <p className="text-sm font-bold text-slate-600 mt-4">
+                        <p className="text-sm font-bold mt-4 opacity-80" style={{ color: theme.textMain }}>
                         {content.organization.description || "Silakan Hubungi Nomor Di Bawah"}
                         </p>
                     )}
@@ -405,13 +413,14 @@ const App: React.FC = () => {
                 {/* PODCAST SECTION */}
                 <section className="text-center space-y-6 pt-6 border-t-4 border-black border-dashed">
                 <div className="flex flex-col items-center gap-2">
-                    <h2 className="text-xl font-black text-slate-900 flex items-center justify-center gap-2">
+                    <h2 className="text-xl font-black flex items-center justify-center gap-2" style={{ color: theme.textMain }}>
                         <span className="w-3 h-3 bg-red-500 rounded-full border border-black animate-pulse"></span>
                         {isEditing ? (
                             <input 
                                 value={content.podcast.title}
                                 onChange={(e) => updatePodcast('title', e.target.value)}
                                 className="bg-transparent border-b border-black text-center focus:outline-none"
+                                style={{ color: theme.textMain }}
                             />
                         ) : content.podcast.title}
                     </h2>
@@ -429,13 +438,11 @@ const App: React.FC = () => {
                     className="w-full aspect-video rounded-xl overflow-hidden border-2 border-black relative bg-black group transition-transform hover:-translate-y-1"
                     style={{ 
                         boxShadow: '6px 6px 0px 0px #000',
-                        ['--hover-shadow' as any]: `8px 8px 0px 0px ${THEME.colors.accent}`
+                        ['--hover-shadow' as any]: `8px 8px 0px 0px ${theme.accent}`
                     }}
                 >
-                    {/* Dynamic hover style via inline style wasn't applying cleanly to tailwind classes, using standard hover class with style override strategy or clean class */}
-                    <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: THEME.colors.accent }}></div>
+                    <div className="absolute inset-0 pointer-events-none border-0 transition-all group-hover:shadow-[8px_8px_0px_0px_var(--accent-color)]" style={{ ['--accent-color' as any]: theme.accent }}></div>
 
-                    {/* YouTube Embed - KEY ADDED FOR RELOAD */}
                     <iframe 
                     key={content.podcast.videoUrl}
                     width="100%" 
@@ -455,7 +462,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 text-center text-sm font-bold text-slate-500 border-t-2 border-black bg-white">
+      <footer className="py-8 text-center text-sm font-bold border-t-2 border-black opacity-70" style={{ backgroundColor: theme.cardBackground, color: theme.textMain }}>
          &copy; {new Date().getFullYear()} {content.organization.name}
       </footer>
     </div>
